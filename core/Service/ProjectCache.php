@@ -55,4 +55,22 @@ class ProjectCache
         self::$memo = $all;
         @file_put_contents(self::file(), json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
     }
+
+    /**
+     * 仅刷新某 slug 快照的时间戳：自动同步检测到远端无更新时调用，
+     * 使该快照重新「新鲜」，避免每个冷却周期都重复打 GitHub 检测接口。
+     */
+    public static function touch(string $slug, int $ts): void
+    {
+        if ($slug === '') {
+            return;
+        }
+        $all = self::loadAll();
+        if (!isset($all[$slug]) || !is_array($all[$slug])) {
+            return;
+        }
+        $all[$slug]['ts'] = $ts;
+        self::$memo = $all;
+        @file_put_contents(self::file(), json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+    }
 }

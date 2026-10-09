@@ -77,7 +77,8 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 ├── static/                  全站静态资源（含 50x.html 兜底页）
 ├── plugins/                 插件（Hook 钩子总线）
 ├── config/                  配置
-│   └── config.sample.php    配置模板（config.php 由安装向导生成，不入库）
+│   ├── config.sample.php    配置模板（config.php 由安装向导生成，不入库）
+│   └── nginx.conf.example   伪静态配置样例（可整段复制到宝塔「伪静态」）
 ├── bin/                     CLI 脚本（migrate / project_sync / wm_refresh / schema / dbcheck / sqlitecheck / build_50x / check_*）
 ├── data/                    运行期数据（项目同步状态、升级缓存）
 ├── fonts/                   内置中文字体（文泉驿微米黑，Apache-2.0）
@@ -185,10 +186,24 @@ php bin/migrate.php         # 结构迁移
 ### Nginx
 
 宝塔面板：**网站 → 设置 → 伪静态**，粘贴以下内容（`fastcgi_pass` 的 socket 路径按实际
-PHP 版本修改，宝塔一般位于 `/tmp/php-cgi-XX.sock`）。
+PHP 版本修改，宝塔一般位于 `/tmp/php-cgi-XX.sock`）。同一份内容也存于
+[`config/nginx.conf.example`](config/nginx.conf.example)，可直接复制，避免抄漏 `error_page` 行。
 
 ```nginx
-# 网站运行目录 = 项目根目录（含 index.php 的那一层），URL 与磁盘一一对应
+# ───────────────────────────────────────────────────────────────────
+# PHP_blog 伪静态配置样例（宝塔面板：网站 → 设置 → 伪静态，整段粘贴）
+#
+# 使用前提：网站运行目录指向项目根目录（含 index.php 的那一层），URL 与磁盘一一对应。
+# fastcgi_pass 的 socket 路径按实际 PHP 版本修改，宝塔一般是 /tmp/php-cgi-XX.sock。
+#
+# ⚠️ 最容易踩、也最致命的坑（务必照抄，不要改）：
+#     错误页必须指向「预渲染静态文件」static/{404,403,50x}.html，
+#     绝不能写成 error_page 404 /index.php。
+#   因为 404 / 403 / 502 恰恰发生在 PHP 通道本身不可用的时候（文件没上传、fastcgi 挂了），
+#   此时再让 nginx 内部走一次 PHP，只会拿到 nginx 原生错误页 —— 这正是
+#   「错误页不跟主题走、始终是原生页」的根本原因。
+#   静态页由 php bin/build_50x.php 生成，后台「切换主题」时也会自动重建。
+# ───────────────────────────────────────────────────────────────────
 
 # ① 源码与数据目录：禁止 Web 访问（缺了这条 config/config.php 可被直接下载）
 location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { deny all; return 404; }
@@ -215,8 +230,10 @@ location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|t
     access_log off;
 }
 
-# ⑥ 错误页：404 走主题；502/504 走预渲染静态兜底页（此时 PHP 已崩溃，无法现渲染）
-error_page 404 /index.php;
+# ⑥ 错误页：全部指向预渲染静态文件，不经过 PHP。
+#    404 与 403 各有独立页面，少任何一行该状态码都会退回 nginx 原生页。
+error_page 404 /static/404.html;
+error_page 403 /static/403.html;
 error_page 500 502 503 504 /static/50x.html;
 
 location ~ \.php$ {
@@ -235,11 +252,10 @@ location ~ \.php$ {
 
 - **`/admin` 无需任何特殊配置**，根 `index.php` 已注册后台路由。
 - **`themes/` 的封锁规则不能漏**，否则主题模板源码（`base.html` 等）可被直接下载。
-- `error_page 404 /index.php` 会让 nginx 内部再走一次 PHP，PHP 内 `Router` 未命中即输出
-  主题化的 404 页（`themes/<主题>/404.html`）；模板缺失时自动降级为自包含 HTML。
-- `502` 必须指向 `static/50x.html` 这个**预渲染静态文件**：nginx 连不上 PHP 时
-  PHP 已经崩溃，无法现场渲染主题页。主题或样式改动后用
-  `php bin/build_50x.php` 重新生成。
+- **`error_page` 一律指向预渲染静态文件，绝不写 `/index.php`**。404/403/502 恰恰发生在 PHP 通道
+  本身不可用的时候（文件没上传、fastcgi 挂了），此时让 nginx 内部再走一次 PHP 只会得到 nginx 原生页。
+  静态页由 `php bin/build_50x.php` 从 `themes/<主题>/{404,403,502}.html` 预渲染并内联 theme.css，
+  nginx 直接吐文件，不经过 PHP。改了主题样式后重新执行该脚本。
 - **排查 404 是 nginx 原生页还是主题页**：先在项目根放一个探针 `echo '<?php echo "PHPOK";' > t.php`，
   访问 `https://你的域名/t.php`。返回 `PHPOK` 说明 PHP 通道正常，是文件没上传到位
   （1.x 升级后 `index.php` 在根、`public/` 已删）；返回 nginx 原生页才是 `location ~ \.php$`
@@ -270,7 +286,8 @@ server {
         access_log off;
     }
 
-    error_page 404 /index.php;
+    error_page 404 /static/404.html;
+    error_page 403 /static/403.html;
     error_page 500 502 503 504 /static/50x.html;
 
     location ~ \.php$ {
@@ -343,7 +360,7 @@ php -S 0.0.0.0:8000 -t . bin/router.php
 | `php bin/wm_refresh.php` | 按当前设置重做历史图片水印 |
 | `php bin/dbcheck.php` | 检查数据库连接与表结构 |
 | `php bin/sqlitecheck.php` | 检查 SQLite 备份文件 |
-| `php bin/build_50x.php` | 重新生成 502 兜底页 `static/50x.html`（改主题样式后执行） |
+| `php bin/build_50x.php` | 重新生成静态错误页 `static/{404,403,50x}.html`（改主题样式后必须执行） |
 | `php bin/check_routes.php` | 校验路由表与 `Url::ROUTES` 一致性 |
 | `php bin/check_errorpage.php` | 校验错误页链路（主题模板 / 降级 HTML / 静态兜底） |
 | `php bin/check_hidden.php` | 校验文章 `hidden` 状态的列表 / 邻篇 / 统计口径 |
@@ -410,18 +427,42 @@ rm -rf storage/cache/templates/*
 
 编辑 `themes/<主题名>/403.html`、`404.html`、`500.html`、`502.html`，然后：
 
-- `403` / `404` / `500`：清空模板缓存 `storage/cache/templates/*` 即生效；
-- `502`：nginx 用的是预渲染静态文件，须执行 `php bin/build_50x.php` 重新生成
-  `static/50x.html`。
+- **全部四个**都要执行 `php bin/build_50x.php` 重新生成 `static/{404,403,50x}.html`，
+  因为 nginx 的 `error_page` 只读静态文件，读不到模板；
+- `403` / `404` / `500` 的 PHP 侧渲染（应用内部主动 abort 时走这条路）还会带上站点名与导航，
+  改完清空 `storage/cache/templates/*` 即生效。
 
-`502` 只能用静态文件，因为 nginx 连不上 PHP 时 PHP 已经崩溃，无法现场渲染模板。
+`error_page` 必须指向静态文件，不能写 `/index.php`：404 / 403 / 502 恰恰发生在 PHP 通道本身
+不可用的时候（文件没上传、fastcgi 挂了），让 nginx 内部再走一次 PHP 只会退回 nginx 原生页。
 
 `403` 是跨站请求被拦截时的页面（见下文「安全」的 CSRF 说明），由根 `index.php` 渲染，
 不需要改 nginx。
 
 ## 版本
 
-当前版本：**2.1.0**
+当前版本：**2.1.1**
+
+### 从 2.1.0 升级到 2.1.1
+
+修复与优化：
+
+1. **修复静态错误页生成失败（重要）**：`ErrorPages` 缺少 `use Blog\View`，导致
+   `php bin/build_50x.php` 与后台换主题时的重建**一直失败**，`static/404.html`、
+   `static/403.html` 始终生成不出来。nginx 的 `error_page 404 /static/404.html` 指向了不存在的
+   文件，于是 404 / 403 退回 nginx 原生页。现已修复命名空间，并把 `rebuild()` 改为逐页容错
+   （主题未提供错误页模板时降级为内置 HTML），保证三个文件一定能写出。
+2. **修复 `/projects` 首屏卡顿**：自动同步原先在请求线程内同步调用 GitHub API 检测更新，
+   项目较多时会拖慢首字节；现改为请求内只做本地判断并入队，检测与拉取在响应发出后
+   （`fastcgi_finish_request`）异步执行。
+3. **项目自动同步更省流量**：先比对远端 `pushed_at`，**有更新才拉** README 与图片；
+   手动同步按钮仍为强制全量。前台访客也能把自动同步跑完，不再依赖管理员打开后台轮询。
+4. **升级后自动重建静态错误页**：一键升级完成后自动重建一次，避免升级包里的
+   `static/*.html` 与当前主题脱节。
+5. **新增 `config/nginx.conf.example`**：可直接复制到宝塔「伪静态」的配置样例；
+   README 伪静态段落同步更新，并强调 `error_page` 必须指向 `static/{404,403,50x}.html`。
+
+> 升级到本版后，请**先执行一次 `php bin/build_50x.php`**（或在后台切换一次主题），
+> 确保 `static/{404,403,50x}.html` 存在；否则 404 / 403 / 502 仍可能是 nginx 原生页。
 
 ### 从 2.0.0 升级到 2.1.0
 
@@ -444,9 +485,10 @@ cd /www/wwwroot/你的站点目录 && ls -la   # 确认无 public/ 与 admin.php
    `public/themes`、`public/static` 路径全部失效。升级后若沿用旧 nginx 配置，
    主题与静态资源会 404。
 3. **入口合并为单一 `index.php`**：`admin.php` 已移除，`/admin` 无需任何特殊配置。
-4. **错误页主题化**：403 / 404 / 500 由 `themes/<主题>/<code>.html` 渲染，
-   502 / 503 / 504 走 `static/50x.html` 静态兜底（PHP 崩溃时唯一能出页面的途径，
-   主题改动后需重跑 `php bin/build_50x.php`）。
+4. **错误页主题化**：403 / 404 / 500 由 `themes/<主题>/<code>.html` 渲染；
+   nginx 的 `error_page` 统一指向预渲染静态页 `static/{404,403,50x}.html`，
+   不经过 PHP（PHP 通道挂了也能出主题页）。改主题样式后须重跑
+   `php bin/build_50x.php`。
 5. `config/`、`storage/`、`uploads/`、`backups/`、`data/` 不受影响，升级不会被覆盖。
 
 ## 开源

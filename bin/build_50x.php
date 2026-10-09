@@ -2,21 +2,21 @@
 declare(strict_types=1);
 
 /**
- * 生成 static/50x.html：nginx 502/504 的静态兜底页。
- * 502 时刻 PHP 已崩溃，无法渲染模板，故预渲染成纯静态文件。
+ * 重新生成静态错误页 static/{404,403,50x}.html。
+ *
+ * 换主题时 ThemeController 会自动调用同一份逻辑，正常情况下无需手动执行。
+ * 手工改了 themes/<主题>/{404,403,502}.html 或 theme.css 后才需要跑这个脚本。
  * 用法：php bin/build_50x.php
  */
 require_once __DIR__ . '/../core/bootstrap.php';
 
-use Blog\View;
+use Blog\Service\ErrorPages;
 
-View::bootstrapGlobals();
-$html = View::render('502.html', []);
-
-// 内联主题样式：静态页无 PHP 参与，CSS 只能靠相对路径引用（/themes/... 走 PHP 路由，502 时不可用）
-$css = (string) file_get_contents(PHP_BLOG_ROOT . '/themes/tech/theme.css');
-$html = str_replace('</head>', '<style>' . $css . '</style></head>', $html);
-
-$out = PHP_BLOG_ROOT . '/static/50x.html';
-file_put_contents($out, $html);
-echo "written: {$out} (" . strlen($html) . " bytes)\n";
+$errs = ErrorPages::rebuild();
+if (isset($errs['error'])) {
+    fwrite(STDERR, '失败：' . $errs['error'] . "\n");
+    exit(1);
+}
+foreach ($errs as $path => $err) {
+    echo "written: {$path} (" . filesize($path) . " bytes)\n";
+}

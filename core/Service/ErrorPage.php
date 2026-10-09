@@ -52,8 +52,8 @@ class ErrorPage
         return self::fallback($code);
     }
 
-    /** 自包含 HTML：不依赖数据库与主题资源 */
-    private static function fallback(int $code): string
+    /** 自包含 HTML：不依赖数据库与主题资源（ErrorPages 生成静态页时同样复用它兜底） */
+    public static function fallback(int $code): string
     {
         [$title, $desc] = match ($code) {
             403 => ['请求被拒绝', '检测到跨站提交的表单，请求已拦截。'],

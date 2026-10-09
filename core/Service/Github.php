@@ -57,6 +57,23 @@ class Github
     }
 
     /**
+     * 轻量检测：只取仓库的 pushed_at（最近一次推送时间）。
+     * 自动同步先用它与本地快照比对，相同即视为无更新，省下 README 拉取与图片下载。
+     * 请求失败（网络异常 / 限流）返回 null，调用方应跳过本轮、保留旧快照而非清空。
+     */
+    public static function remotePushedAt(string $slug): ?string
+    {
+        if ($slug === '') {
+            return null;
+        }
+        $repo = self::apiGet('https://api.github.com/repos/' . $slug);
+        if ($repo === null) {
+            return null;
+        }
+        return (string) ($repo['pushed_at'] ?? '');
+    }
+
+    /**
      * 把 GitHub /languages 返回的 map（语言名 => 字节数）归一化为 [[语言名, 百分比], ...]。
      * 百分比按字节占比四舍五入到 1 位小数，并按字节数降序；非 map（空/列表）输入返回空数组。
      * 对照原项目 fetch_github_repo 的 languages 处理。

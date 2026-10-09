@@ -9,6 +9,7 @@ use Blog\Request;
 use Blog\Response;
 use Blog\Service\Auth;
 use Blog\Service\Context;
+use Blog\Service\ErrorPages;
 use Blog\Service\Flash;
 
 /**
@@ -38,7 +39,14 @@ class ThemeController extends BaseController
 
         if ($newTheme !== '' && in_array($newTheme, $validKeys, true)) {
             Settings::set('active_theme', $newTheme);
-            Flash::success('主题已切换为：' . $newTheme);
+            // nginx 的 error_page 直接吐静态文件，不走 PHP，故换主题后必须重建，
+            // 否则 404/403/502 仍是上一个主题的样式
+            $errs = ErrorPages::rebuild();
+            if (isset($errs['error'])) {
+                Flash::error('主题已切换，但静态错误页重建失败：' . $errs['error'] . '，请手动执行 php bin/build_50x.php');
+            } else {
+                Flash::success('主题已切换为：' . $newTheme);
+            }
         } else {
             Flash::error('无效的主题：' . $newTheme);
         }

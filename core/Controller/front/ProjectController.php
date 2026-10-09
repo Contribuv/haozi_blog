@@ -15,6 +15,7 @@ use Blog\Service\Context;
 use Blog\Service\Github;
 use Blog\Service\Lang;
 use Blog\Service\ProjectCache;
+use Blog\Service\ProjectSync;
 
 /**
  * 前台项目控制器（对照原项目 projects_page / project_detail / project_comment）。
@@ -27,6 +28,8 @@ class ProjectController extends BaseController
         if (!Context::navEnabled('projects')) {
             $this->abort404();
         }
+        // 快照过期即排队自动同步（不阻塞本次请求，同步由后台轮询自驱动推进）
+        ProjectSync::autoSync();
         $projects = array_map(
             static fn (array $p): array => Lang::decorate($p),
             Project::load()

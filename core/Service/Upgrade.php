@@ -277,6 +277,9 @@ class Upgrade
             }
             // 6. 清理旧版本残留：只覆盖不删除，1.x 的 public/、admin.php 会留在磁盘上
             $removed = self::prune($root);
+            // 7. 重建静态错误页：升级包里的 static/{404,403,50x}.html 可能滞后于当前主题，
+            //    且文件缺失时 nginx 的 error_page 会扑空退回原生页
+            ErrorPages::rebuild();
             return [true, '升级成功：代码已从 v' . Context::VERSION . ' 更新为 v' . $tag
                 . '（替换 ' . $replaced . ' 个文件，删除 ' . $removed . ' 个旧文件）。'
                 . '数据已自动备份到 backups/upgrade_' . $ts . '_' . $tag

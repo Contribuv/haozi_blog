@@ -16,7 +16,7 @@
         } catch (e) {}
       })();
     </script>
-    <title>服务暂时不可用 - infowe.site</title>
+    <title>页面不存在 - infowe.site</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
     <link rel="stylesheet" href="/themes/tech/theme.css?t=v2.1.1">
     <link rel="alternate" type="application/rss+xml" title="infowe.site RSS" href="/feed.xml">
@@ -1628,13 +1628,14 @@ html { touch-action: manipulation; }
         <div class="tech-shell">
             
 <div class="tech-error">
-    <div class="tech-error-code">5<span>0</span>2</div>
-    <h1 class="tech-error-title">服务暂时不可用</h1>
-    <p class="tech-error-desc">服务器暂时无法处理请求，请稍后重试。</p>
+    <div class="tech-error-code">4<span>0</span>4</div>
+    <h1 class="tech-error-title">页面不存在</h1>
+    <p class="tech-error-desc">你访问的页面可能已被删除或从未存在过。</p>
     <div class="tech-error-code-block">
-        <pre><span class="hl-error">$</span> tail -f /var/log/nginx/error.log
-      <span class="hl-error">connect() failed (111: Connection refused) while connecting to fastcgi</span>
-      <span class="hl-error">upstream: "fastcgi://unix:/run/php/php-fpm.sock"</span></pre>
+        <pre><span class="hl-error">$</span> curl -I http://127.0.0.1/
+HTTP/1.1 <span class="hl-error">404 Not Found</span>
+Content-Type: text/html
+Connection: close</pre>
     </div>
     <a href="/" class="tech-btn tech-btn-primary">返回首页</a>
 </div>
