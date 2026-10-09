@@ -23,20 +23,22 @@ class AssetController extends BaseController
         $this->serve($abs, 604800);
     }
 
-    /** /static/<filename>（public/static 下资源） */
+    /** /static/<filename>（项目根 static/ 下资源） */
     public function static(string $filename): void
     {
-        $abs = $this->safeJoin(PUBLIC_PATH . '/static', $filename);
-        if ($abs === null || !is_file($abs)) {
-            $this->abort404();
-        }
-        $this->serve($abs, 604800);
+        $this->serveFrom('/static', $filename);
     }
 
     /** /themes/<path:filename>（主题静态资源，filename 含主题目录名） */
     public function themeStatic(string $filename): void
     {
-        $abs = $this->safeJoin(PHP_BLOG_ROOT . '/themes', $filename);
+        $this->serveFrom('/themes', $filename);
+    }
+
+    /** 从 $subdir 下取文件并输出，路径穿越由 safeJoin 兜住 */
+    private function serveFrom(string $subdir, string $filename): void
+    {
+        $abs = $this->safeJoin(PHP_BLOG_ROOT . $subdir, $filename);
         if ($abs === null || !is_file($abs)) {
             $this->abort404();
         }

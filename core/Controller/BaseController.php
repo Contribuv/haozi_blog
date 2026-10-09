@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Blog\Controller;
 
 use Blog\Response;
+use Blog\Service\ErrorPage;
 use Blog\View;
 
 /**
@@ -17,9 +18,9 @@ abstract class BaseController
         Response::html(View::render($tpl, $data), $code);
     }
 
-    /** 404 页面（站内风格） */
+    /** 404 页面（站内风格，模板缺失时自动降级） */
     protected function abort404(): void
     {
-        $this->render('404.html', [], 404);
+        ErrorPage::render(404);
     }
 }

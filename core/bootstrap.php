@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 define('PHP_BLOG_ROOT', dirname(__DIR__));
 define('CORE_PATH', __DIR__);
-define('PUBLIC_PATH', PHP_BLOG_ROOT . '/public');
 define('STORAGE_PATH', PHP_BLOG_ROOT . '/storage');
 
 // 配置文件：优先使用安装向导生成的 config.php；缺失时回退示例配置（供向导页面读取默认值）

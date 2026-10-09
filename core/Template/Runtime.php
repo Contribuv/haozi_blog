@@ -195,6 +195,13 @@ class Runtime
     {
         if (is_array($base)) {
             switch ($name) {
+                case 'update':
+                    // 字典按键合并。$base 按值传入，改不了原变量，故返回合并后的新 dict，
+                    // 模板需写成 `{% set args = args.update({...}) %}`（不要用 `set _ =`）
+                    if (!empty($pos[0]) && is_array($pos[0])) {
+                        return array_merge($base, $pos[0]);
+                    }
+                    return $base;
                 case 'get':
                     return $pos[0] !== null && array_key_exists($pos[0], $base)
                         ? $base[$pos[0]]
@@ -383,10 +390,11 @@ class Runtime
             return $v[$k] ?? null;
         }
         if (is_string($v)) {
+            // 同 slice：字符串下标按字符定位，避免 UTF-8 被字节下标截断
             if (is_int($k) && $k < 0) {
-                $k = strlen($v) + $k;
+                $k = mb_strlen($v, 'UTF-8') + $k;
             }
-            return $v[$k] ?? null;
+            return is_int($k) ? mb_substr($v, $k, 1, 'UTF-8') : null;
         }
         if ($v instanceof \ArrayAccess && is_string($k)) {
             return $v->offsetExists($k) ? $v[$k] : null;
@@ -401,7 +409,8 @@ class Runtime
     public function slice(mixed $v, mixed $a, mixed $b): mixed
     {
         if (is_string($v) || is_array($v)) {
-            $len = is_string($v) ? strlen($v) : count($v);
+            // 字符串按字符（Python 语义）计数与切分，字节语义会截断 UTF-8 多字节序列产生乱码
+            $len = is_string($v) ? mb_strlen($v, 'UTF-8') : count($v);
             $a = $a === null ? 0 : (int)$a;
             $b = $b === null ? $len : (int)$b;
             if ($a < 0) {
@@ -413,7 +422,7 @@ class Runtime
             $b = min($b, $len);
             $n = max($b - $a, 0);
             if (is_string($v)) {
-                return $n <= 0 ? '' : (string)substr($v, $a, $n);
+                return $n <= 0 ? '' : (string)mb_substr($v, $a, $n, 'UTF-8');
             }
             return $n <= 0 ? [] : array_slice(array_values($v), $a, $n);
         }
@@ -594,14 +603,14 @@ class Runtime
         }
         $attr = (string)($pos[0] ?? '');
         $hasOp = count($pos) >= 2;
-        $op = $hasOp ? (string)$pos[1] : ($kw['op'] ?? null);
+        $op = $hasOp ? (string)$pos[1] : null;
         $cmp = $pos[2] ?? null;
         $out = [];
         foreach ($v as $item) {
             $val = $this->attr($item, $attr);
             if ($hasOp) {
                 $ok = match ($op) {
-                    'eq', '==' => $val == $cmp,
+                    'eq', '==', 'equalto', '===' => $val == $cmp,
                     'ne', '!=' => $val != $cmp,
                     'gt', '>' => $val > $cmp,
                     'ge', '>=' => $val >= $cmp,
@@ -653,7 +662,7 @@ class Runtime
             return '';
         }
         if (!isset(self::$icons[$name])) {
-            $file = PUBLIC_PATH . '/static/icons/' . $name . '.svg';
+            $file = PHP_BLOG_ROOT . '/static/icons/' . $name . '.svg';
             self::$icons[$name] = is_file($file) ? (string)file_get_contents($file) : '';
         }
         $raw = self::$icons[$name];

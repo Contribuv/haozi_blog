@@ -97,7 +97,8 @@ class PostController extends BaseController
     {
         $id = (int) $postId;
         $post = Post::getById($id);
-        if (!$post || $post['status'] !== 'published') {
+        // hidden（隐藏）仅 URL 可直达；draft 草稿不对外
+        if (!$post || !in_array($post['status'], ['published', 'hidden'], true)) {
             $this->abort404();
         }
         $cat = $post['category_id'] !== null ? Category::get((int) $post['category_id']) : null;
@@ -173,7 +174,7 @@ class PostController extends BaseController
             exit;
         }
         $post = Post::getById((int) $postId);
-        if (!$post) {
+        if (!$post || !in_array($post['status'], ['published', 'hidden'], true)) {
             $this->abort404();
         }
         Response::redirect(Comments::submit($post, null));

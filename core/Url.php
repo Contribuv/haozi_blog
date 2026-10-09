@@ -79,6 +79,7 @@ class Url
         'admin_upload_media' => '/admin/upload/media',
         'admin_upload_file' => '/admin/upload/file',
         'admin_orphans' => '/admin/orphans',
+        'admin_orphan_clean' => '/admin/orphans/clean',
         'admin_status' => '/admin/status',
         'admin_status_probe' => '/admin/status/probe',
         'admin_status_test_cloud' => '/admin/status/test-cloud',

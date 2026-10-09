@@ -71,11 +71,7 @@ class Avatar
             return false;
         }
         $rel = ltrim($cfg, '/');
-        foreach ([PHP_BLOG_ROOT . '/' . $rel, PUBLIC_PATH . '/' . $rel] as $p) {
-            if (is_file($p)) {
-                return true;
-            }
-        }
-        return false;
+        $p = PHP_BLOG_ROOT . '/' . $rel;
+        return is_file($p);
     }
 }

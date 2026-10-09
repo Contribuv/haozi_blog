@@ -34,7 +34,7 @@
         头像、项目文件与无痕原图目录（.originals）不在此列，不会误删。
     </div>
 
-    <form id="orphanForm">
+    <form id="orphanForm" action="{{ url_for('admin_orphan_clean') }}" method="post">
         <div class="bulk-bar">
             <label class="checkbox-label">
                 <input type="checkbox" id="checkAll"> 全选

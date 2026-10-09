@@ -57,7 +57,8 @@ class LoginGuard
             }
         }
         if (count($data) > 2000) {
-            return [];
+            // 只丢最旧的，不能整份清空 —— 否则伪造 IP 灌满 2000 就能把锁定状态一起抹掉
+            $data = array_slice($data, -2000, null, true);
         }
         return $data;
     }

@@ -92,8 +92,8 @@
 {% if total_pages > 1 %}
 <nav class="tech-pagination" aria-label="分页导航">
     {% set args = {} %}
-    {% if current_tag %}{% set _ = args.update({'tag': current_tag}) %}{% endif %}
-    {% if search_query %}{% set _ = args.update({'q': search_query}) %}{% endif %}
+    {% if current_tag %}{% set args = args.update({'tag': current_tag}) %}{% endif %}
+    {% if search_query %}{% set args = args.update({'q': search_query}) %}{% endif %}
 
     {% if page > 1 %}
     <a href="{{ url_for('index', page=page-1, **args) }}" class="tech-page-btn">上一页</a>

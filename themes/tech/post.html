@@ -346,11 +346,10 @@
             clearInterval(timer);
             sessionStorage.setItem(key, '1');
             var url = '/post/' + postId + '/view';
-            try {
-                fetch(url, { method: 'POST', keepalive: true });
-            } catch (e) {
-                if (navigator.sendBeacon) navigator.sendBeacon(url);
-            }
+            // 浏览计数上报：失败无所谓，但不能抛未捕获的 rejection（try/catch 抓不到 Promise）
+            fetch(url, { method: 'POST', keepalive: true }).catch(function () {
+                if (navigator.sendBeacon) { navigator.sendBeacon(url); }
+            });
         }
     }, 1000);
 })();

@@ -349,11 +349,6 @@ return [
         'httponly' => true,
         'samesite' => 'Lax',
     ],
-    'upload' => [
-        'max_size' => 20971520,
-        'dir' => __DIR__ . '/../storage/uploads',
-        'base_url' => '/uploads',
-    ],
     'theme' => [
         'default' => 'tech',
     ],

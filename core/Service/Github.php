@@ -167,8 +167,12 @@ class Github
     /** README 单图上限：8MB，防超大图拖慢同步/占满磁盘 */
     private const README_IMG_MAX = 8388608;
 
-    /** README 图片扩展名白名单 */
-    private const README_IMG_EXT = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.bmp', '.ico'];
+    /**
+     * README 图片扩展名白名单。
+     * 刻意不含 .svg：SVG 内联脚本，同源落在 uploads/ 下会被浏览器当文档执行，
+     * 与 Upload::IMAGE_EXT 的口径保持一致。
+     */
+    private const README_IMG_EXT = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.ico'];
 
     /**
      * 把 README 中指向同仓库 raw.githubusercontent.com 的图片下载到本地并替换 src。
@@ -288,9 +292,7 @@ class Github
         if (substr($data, 0, 4) === 'RIFF' && substr($data, 8, 4) === 'WEBP') {
             return '.webp';
         }
-        if (in_array(substr($data, 0, 5), ['<svg ', '<?xml'], true)) {
-            return '.svg';
-        }
+        // 不按魔数认 .svg：SVG 可内联脚本，落盘到同源 uploads/ 即为 stored XSS
         return '';
     }
 

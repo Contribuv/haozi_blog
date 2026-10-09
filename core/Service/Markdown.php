@@ -51,6 +51,9 @@ class Markdown
         }
         $p = new self();
         $html = $p->convert($md);
+        // README 来自 GitHub 仓库，同属外部内容，必须和正文一样走 hardenLinks，
+        // 否则恶意仓库里的 [x](javascript:...) 会在本站项目页执行
+        $html = self::hardenLinks($html);
         return self::absolutizeReadme($html, $slug, $branch);
     }
 

@@ -111,7 +111,9 @@ class Comments
             $qq,
             $ip,
             $status,
-            $isProject ? $targetId : null
+            $isProject ? $targetId : null,
+            // 离线归属地查询约 0.04ms，无需像原项目那样另起线程回填
+            IpLocation::of($ip)
         );
         self::touchCooldown('comment', $ip);
         // 钩子位 comment.create：插件可在评论落库后做通知/统计等副作用

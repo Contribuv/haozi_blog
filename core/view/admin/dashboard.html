@@ -93,9 +93,11 @@
                 </td>
                 <td data-label="状态">
                     {% if post.status == 'published' %}
-                    <span class="badge badge-success">已发布</span>
-                    {% else %}
-                    <span class="badge badge-warning">草稿</span>
+                <span class="badge badge-success">已发布</span>
+                {% elif post.status == 'hidden' %}
+                <span class="badge badge-info">隐藏</span>
+                {% else %}
+                <span class="badge badge-warning">草稿</span>
                     {% endif %}
                 </td>
                 <td class="text-muted" data-label="更新时间">{{ post.updated_at[:10] }}</td>

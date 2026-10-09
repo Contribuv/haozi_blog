@@ -59,9 +59,8 @@
             <div class="otp-emergency">
                 <strong>检测到 OTP 紧急禁用标记（data/.otp_disable）</strong>
                 <p>当前 OTP 验证已被临时跳过。已确认可以正常登录后，请清除该标记以恢复保护。</p>
-                <form method="POST" action="{{ url_for('admin_otp_clear_emergency') }}">
-                    <button type="submit" class="btn btn-outline btn-sm">我已处理，清除标记并恢复</button>
-                </form>
+                {# 不能嵌套 form：HTML 解析器会忽略内层 action，按钮会误提交到外层设置表单。用 form 属性指向外部表单 #}
+                <button type="submit" form="otpEmergencyForm" class="btn btn-outline btn-sm">我已处理，清除标记并恢复</button>
             </div>
             {% endif %}
 
@@ -414,6 +413,9 @@
         <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline">取消</a>
     </div>
 </form>
+
+{# 独立的清除标记表单：受上面的按钮通过 form 属性触发 #}
+<form id="otpEmergencyForm" method="POST" action="{{ url_for('admin_otp_clear_emergency') }}" hidden></form>
 
 <script src="{{ url_for('static', filename='vendor/qrcode/qrcode.min.js') }}"></script>
 <script>

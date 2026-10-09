@@ -1,0 +1,30 @@
+# 运行目录（DocumentRoot）指向项目根时，必须显式挡住源码与数据目录，
+# 否则 config/config.php（含数据库密码）可被直接下载。Nginx 用户见 README 的等价配置。
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # ① 源码与数据目录：禁止 Web 访问（static/ 与 themes/ 需对外，故不在此列）
+    RewriteRule ^(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) - [F,L]
+
+    # ② 隐藏文件与目录（放行 .well-known）
+    RewriteRule ^\.(?!well-known) - [F,L]
+
+    # ③ 主题目录只放行静态资源：挡住模板源码与 info.json
+    RewriteRule ^themes/.+\.(html|json)$ - [F,L]
+
+    # ④ 上传目录：正常文件可访问，但挡住隐藏目录（无痕原图 .originals）与可执行脚本
+    #    注意不能写成 ^uploads/.*/ —— 那会连正常的 uploads/2026/08/xxx.jpg 一起拦掉
+    RewriteRule ^uploads/(?:.*/)?\.[^/]* - [F,L]
+    RewriteRule ^uploads/.*\.(?:php|phtml|phar|htaccess)$ - [F,L]
+
+    # ⑤ 伪静态：非真实文件/目录一律交给前端控制器
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# ⑥ 上传目录内的隐藏文件（原图备份）无 RewriteRule 兜底，用 FilesMatch 兜住
+<FilesMatch "(^\.|originals$)">
+    Require all denied
+</FilesMatch>

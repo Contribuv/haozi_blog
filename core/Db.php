@@ -3,6 +3,7 @@ namespace Blog;
 
 use PDO;
 use PDOException;
+use Blog\Service\ErrorPage;
 
 class Db
 {
@@ -26,8 +27,8 @@ class Db
             self::$pdo = new PDO($dsn, $db['user'], $db['pass'], $db['options']);
             return self::$pdo;
         } catch (PDOException $e) {
-            http_response_code(500);
-            exit('DB error');
+            error_log('[blog] DB error: ' . $e->getMessage());
+            ErrorPage::render(500);
         }
     }
 

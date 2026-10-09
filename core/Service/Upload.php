@@ -20,6 +20,10 @@ class Upload
     /** 允许的附件扩展名（对照 ALLOWED_FILE_EXT） */
     public const FILE_EXT = ['.zip', '.rar', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.py', '.js', '.json'];
 
+    /**
+     * 上传根目录（项目根 uploads/）。
+     * ponytail: 硬编码常量。上线后若要改盘位，改此处而非新增配置项——YAGNI。
+     */
     public static function root(): string
     {
         return PHP_BLOG_ROOT . '/uploads';
@@ -289,18 +293,38 @@ class Upload
     }
 
     /**
-     * 孤儿文件清理：返回未被任何文章（标题/正文/摘要/标签）引用的上传文件列表。
+     * 全站被引用的 /uploads/ URL 集合（键为 URL）。
+     * 扫所有能写文本的表：评论、项目、友链、时间线、回忆里同样可能引用 /uploads/，
+     * 只扫 posts 会把它们误判为孤儿，而 clean() / deleteWithUploads() 是真删。
+     */
+    public static function referencedUrls(): array
+    {
+        $referenced = [];
+        $sources = [
+            'SELECT title, content, excerpt, tags FROM posts',
+            'SELECT author, website, content FROM comments',
+            'SELECT name, url, description, avatar FROM links',
+            'SELECT title, text, image FROM memories',
+            'SELECT name, description, url FROM projects',
+            'SELECT content FROM timeline',
+        ];
+        foreach ($sources as $sql) {
+            foreach (\Blog\Db::query($sql)->fetchAll() as $r) {
+                foreach (self::extractUrls(...array_map('strval', $r)) as $u) {
+                    $referenced[$u] = true;
+                }
+            }
+        }
+        return $referenced;
+    }
+
+    /**
+     * 孤儿文件清理：返回未被任何内容引用的上传文件列表。
      * 排除 avatar / projects / 隐藏目录（含 .originals）与 uploads 根目录文件。
      */
     public static function orphans(): array
     {
-        $referenced = [];
-        $rows = \Blog\Db::query('SELECT title, content, excerpt, tags FROM posts')->fetchAll();
-        foreach ($rows as $r) {
-            foreach (self::extractUrls((string) $r['title'], (string) $r['content'], (string) $r['excerpt'], (string) $r['tags']) as $u) {
-                $referenced[$u] = true;
-            }
-        }
+        $referenced = self::referencedUrls();
         $out = [];
         $root = self::root();
         if (!is_dir($root)) {

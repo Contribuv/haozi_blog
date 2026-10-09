@@ -333,28 +333,49 @@ class Status
     /** 探测单个 URL，返回 [ok, latency_ms, cert_days, detail] */
     public static function probeUrl(string $url, int $timeout = 5): array
     {
-        $ch = curl_init($url);
-        if ($ch === false) {
-            return [false, 0, -1, '初始化失败'];
-        }
-        Http::applyCurl($ch); // 注入 CA 证书，保证 HTTPS 探测可用
-        curl_setopt_array($ch, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_NOBODY => true,
-            CURLOPT_TIMEOUT => $timeout,
-            CURLOPT_CONNECTTIMEOUT => $timeout,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS => 3,
-            CURLOPT_USERAGENT => 'infowe-monitor',
-        ]);
+        // 不用 CURLOPT_FOLLOWLOCATION：跟随后 curl 不会再回头校验，首跳 302 就能把
+        // 请求引到内网（cleanMonitorUrl 只查了初始 URL）。故手动跟随，每跳重新校验。
         $t0 = microtime(true);
-        $ok = curl_exec($ch);
-        $latency = (int) round((microtime(true) - $t0) * 1000);
-        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err = curl_error($ch);
-        curl_close($ch);
-        $okStatus = $ok !== false && $code > 0 && $code < 500;
-        $detail = $okStatus ? ('HTTP ' . $code) : ($err !== '' ? $err : ('HTTP ' . $code));
+        $latency = 0;
+        $detail = '';
+        $okStatus = false;
+        $target = $url;
+        for ($hop = 0; $hop <= 3; $hop++) {
+            $safe = self::cleanMonitorUrl($target);
+            if ($safe === '') {
+                return [false, 0, -1, '重定向目标被内网策略阻断'];
+            }
+            $ch = curl_init($safe);
+            if ($ch === false) {
+                return [false, 0, -1, '初始化失败'];
+            }
+            Http::applyCurl($ch);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_NOBODY => true,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_CONNECTTIMEOUT => $timeout,
+                CURLOPT_USERAGENT => 'infowe-monitor',
+            ]);
+            $t = microtime(true);
+            $ok = curl_exec($ch);
+            $elapsed = (int) round((microtime(true) - $t) * 1000);
+            $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $err = curl_error($ch);
+            $loc = (string) curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+            curl_close($ch);
+            $latency += $elapsed;
+
+            if (in_array($code, [301, 302, 303, 307, 308], true) && $loc !== '') {
+                $target = $loc;
+                continue;
+            }
+            $okStatus = $ok !== false && $code > 0 && $code < 500;
+            $detail = $okStatus ? ('HTTP ' . $code) : ($err !== '' ? $err : ('HTTP ' . $code));
+            break;
+        }
+        $latency = $latency ?: (int) round((microtime(true) - $t0) * 1000);
         return [$okStatus, $latency, self::sslCertDays($url), $detail];
     }
 

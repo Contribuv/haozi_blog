@@ -14,6 +14,18 @@ class Post extends Model
     /** 每页默认条数 */
     public const PAGE_SIZE = 10;
 
+    /**
+     * 文章状态白名单。
+     * published 已发布；draft 草稿；hidden 隐藏（仅 URL 可直达，不进首页/列表/RSS/归档）。
+     */
+    public const STATUSES = ['published', 'draft', 'hidden'];
+
+    /** 状态归一：非白名单值一律回退为 published */
+    public static function normalizeStatus(string $status): string
+    {
+        return in_array($status, self::STATUSES, true) ? $status : 'published';
+    }
+
     /** 把数据行整理为对外结构（tags 解码） */
     private static function hydrate(array $row): array
     {
@@ -209,6 +221,7 @@ class Post extends Model
             'total' => (int) self::scalar('SELECT COUNT(*) FROM posts'),
             'published' => (int) self::scalar("SELECT COUNT(*) FROM posts WHERE status = 'published'"),
             'drafts' => (int) self::scalar("SELECT COUNT(*) FROM posts WHERE status = 'draft'"),
+            'hidden' => (int) self::scalar("SELECT COUNT(*) FROM posts WHERE status = 'hidden'"),
             'projects' => (int) self::scalar('SELECT COUNT(*) FROM projects'),
             'links' => (int) self::scalar("SELECT COUNT(*) FROM links WHERE status = 'approved'"),
         ];
@@ -267,9 +280,18 @@ class Post extends Model
             $createdAt .= ':00';
         }
         $createdAt = $createdAt !== '' ? $createdAt : null;
-        $status = (string) ($form['status'] ?? 'published');
+        $status = self::normalizeStatus((string) ($form['status'] ?? 'published'));
 
         if ($postId !== null) {
+            // 更新时也要保证 slug 唯一（排除自身），否则 getBySlug 会随机命中另一篇
+            if (self::slugExists($slug, $postId)) {
+                $base = $slug;
+                $i = 2;
+                while (self::slugExists($base . '-' . $i, $postId)) {
+                    $i++;
+                }
+                $slug = $base . '-' . $i;
+            }
             self::exec(
                 'UPDATE posts SET title=?, slug=?, content=?, excerpt=?, tags=?, is_featured=?, read_time=?, status=?, category_id=?, created_at=COALESCE(?, created_at), updated_at=? WHERE id=?',
                 [$title, $slug, $content, $excerpt, $tags, $isFeatured, $readTime, $status, $categoryId, $createdAt, self::now(), $postId]
@@ -326,17 +348,8 @@ class Post extends Model
             return 0;
         }
 
-        $survivors = [];
-        foreach (self::rows('SELECT title, content, excerpt, tags FROM posts') as $r) {
-            foreach (Upload::extractUrls(
-                (string) $r['title'],
-                (string) $r['content'],
-                (string) $r['excerpt'],
-                (string) $r['tags']
-            ) as $u) {
-                $survivors[$u] = true;
-            }
-        }
+        // survivors 复用 Upload::referencedUrls()：评论、项目、友链等也可能引用同一文件
+        $survivors = Upload::referencedUrls();
 
         $removed = 0;
         foreach ($gone as $u) {
@@ -347,9 +360,10 @@ class Post extends Model
         return $removed;
     }
 
-    /** 批量变更状态（publish → published / unpublish → draft），返回受影响行数 */
+    /** 批量变更状态（publish → published / unpublish → draft / hide → hidden），返回受影响行数 */
     public static function bulkSetStatus(array $ids, string $status): int
     {
+        $status = self::normalizeStatus($status);
         $ids = array_values(array_filter(array_map('intval', $ids), static fn (int $i): bool => $i > 0));
         if (!$ids) {
             return 0;
@@ -361,12 +375,13 @@ class Post extends Model
     /**
      * 相邻文章（按 created_at 排序）。
      * $earlier=true 取更早发布的「上一篇」，false 取更晚的「下一篇」。
+     * 仅在已发布文章中取，隐藏/草稿不应暴露。
      */
     public static function adjacent(string $createdAt, bool $earlier): ?array
     {
         $sql = $earlier
-            ? "SELECT id, title FROM posts WHERE created_at < ? ORDER BY created_at DESC LIMIT 1"
-            : "SELECT id, title FROM posts WHERE created_at > ? ORDER BY created_at ASC LIMIT 1";
+            ? "SELECT id, title FROM posts WHERE status = 'published' AND created_at < ? ORDER BY created_at DESC LIMIT 1"
+            : "SELECT id, title FROM posts WHERE status = 'published' AND created_at > ? ORDER BY created_at ASC LIMIT 1";
         $row = self::one($sql, [$createdAt]);
         if (!$row) {
             return null;

@@ -15,7 +15,7 @@ use Blog\Request;
 class Context
 {
     /** 程序版本号（PHP 版独立版本线） */
-    public const VERSION = '1.0.0';
+    public const VERSION = '2.0.0';
 
     /** 可开关的导航项：(配置 key 后缀, 显示名, 链接)；首页与写作入口为固定项 */
     public const NAV_PAGES = [
@@ -127,7 +127,7 @@ class Context
                 'author' => (string) ($meta['author'] ?? ''),
                 'description' => (string) ($meta['description'] ?? ''),
                 'version' => (string) ($meta['version'] ?? self::VERSION),
-                'has_preview' => is_file($base . '/' . $name . '/preview.png'),
+                'has_preview' => is_file(PHP_BLOG_ROOT . '/themes/' . $name . '/preview.png'),
             ];
         }
         return $themes;
@@ -159,7 +159,7 @@ class Context
     {
         $ver = 0;
         foreach (['css/admin.css', 'js/admin.js'] as $f) {
-            $p = PUBLIC_PATH . '/static/' . $f;
+            $p = PHP_BLOG_ROOT . '/static/' . $f;
             if (is_file($p)) {
                 $ver = max($ver, (int) filemtime($p));
             }

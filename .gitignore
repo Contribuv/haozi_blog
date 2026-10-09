@@ -10,7 +10,6 @@
 /backups/
 /uploads/
 /storage/
-/public/static/cache/
 
 # ── 本地工具链 ──
 /.toolchain/

@@ -52,7 +52,7 @@ class PostController extends BaseController
 
         $action = (string) Request::post('action', '');
         $ids = $_POST['post_ids'] ?? [];
-        if (!in_array($action, ['publish', 'unpublish', 'delete'], true)) {
+        if (!in_array($action, ['publish', 'unpublish', 'hide', 'delete'], true)) {
             Flash::error('无效的批量操作');
             Response::redirect('/admin/posts');
         }
@@ -67,8 +67,10 @@ class PostController extends BaseController
             }
             Flash::success('已删除 ' . count($ids) . ' 篇文章');
         } else {
-            Post::bulkSetStatus(array_map('intval', $ids), $action === 'publish' ? 'published' : 'draft');
-            Flash::success('已将 ' . count($ids) . ' 篇文章设为「' . ($action === 'publish' ? '已发布' : '草稿') . '」');
+            $map = ['publish' => ['published', '已发布'], 'unpublish' => ['draft', '草稿'], 'hide' => ['hidden', '隐藏']];
+            [$status, $label] = $map[$action];
+            Post::bulkSetStatus(array_map('intval', $ids), $status);
+            Flash::success('已将 ' . count($ids) . ' 篇文章设为「' . $label . '」');
         }
         Response::redirect('/admin/posts');
     }

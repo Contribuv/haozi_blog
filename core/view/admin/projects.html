@@ -10,10 +10,11 @@
     </div>
 </div>
 
-{% if projects %}
 <div id="syncStatusBar" class="flash-msg info" style="display:none">
     <div id="syncStatusText"></div>
 </div>
+
+{% if projects %}
 <div class="card">
     <form method="POST" action="{{ url_for('admin_projects_bulk') }}" id="bulkProjects">
         <input type="hidden" name="action" id="bulkAction" value="">
@@ -104,8 +105,10 @@
 (function () {
     'use strict';
     // 批量操作：全选 / 计数 / 删除确认
+    // 注意：项目为空时 bulkProjects 表单不渲染，此处不能直接 return，
+    // 否则下面「一键同步全部」的绑定也会被一起跳过。
     var form = document.getElementById('bulkProjects');
-    if (!form) return;
+    if (form) {
     var checkAll = document.getElementById('checkAll');
     var boxes = Array.prototype.slice.call(document.querySelectorAll('.row-check'));
     var count = document.getElementById('bulkCount');
@@ -135,6 +138,7 @@
         if (!confirm('确定删除选中的 ' + n + ' 个项目？此操作不可恢复。')) { e.preventDefault(); return; }
         document.getElementById('bulkAction').value = action;
     });
+    }
 
     // ── 后台同步：AJAX 提交 + 原地轮询进度 ──
     // 同步（含 README 图片本地化）在后台线程执行，POST 立即返回 JSON（不跳转），
@@ -215,7 +219,7 @@
     // 页面加载时若已有同步在后台跑（他人触发/刷新页面），直接接续轮询
     poll();
 
-    update();
+    if (form) { update(); }
 })();
 </script>
 {% endblock %}

@@ -175,11 +175,12 @@ class Comment extends Model
         string $qq = '',
         string $ipText = '',
         string $status = 'pending',
-        ?int $projectId = null
+        ?int $projectId = null,
+        string $ipLocation = ''
     ): int {
         self::exec(
-            'INSERT INTO comments (post_id, project_id, parent_id, author, email, email_hash, website, content, status, is_private, qq, ip_text, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-            [$postId, $projectId, $parentId, $author, $email, $emailHash, $website, $content, $status, $isPrivate ? 1 : 0, $qq, $ipText, self::now()]
+            'INSERT INTO comments (post_id, project_id, parent_id, author, email, email_hash, website, content, status, is_private, qq, ip_text, ip_location, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+            [$postId, $projectId, $parentId, $author, $email, $emailHash, $website, $content, $status, $isPrivate ? 1 : 0, $qq, $ipText, $ipLocation, self::now()]
         );
         return self::insertId();
     }

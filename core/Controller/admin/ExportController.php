@@ -207,8 +207,11 @@ class ExportController extends BaseController
         $data['comments'] = Db::query(
             'SELECT c.*, p.title AS post_title FROM comments c LEFT JOIN posts p ON c.post_id = p.id ORDER BY c.id'
         )->fetchAll();
-        // 排除密码等敏感字段
-        $data['settings'] = Db::query("SELECT * FROM settings WHERE `key` NOT LIKE '%password%'")->fetchAll();
+        // 排除密钥类字段。只过滤 password 不够：smtp_pass / github_token / otp_secret /
+        // aliyun_access_secret / tencent_secret_key 等都会明文落进导出包。
+        $data['settings'] = Db::query(
+            "SELECT * FROM settings WHERE `key` NOT REGEXP 'pass|secret|token|private|salt'"
+        )->fetchAll();
         $data['exported_at'] = date('Y-m-d H:i:s');
 
         $json = (string) json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

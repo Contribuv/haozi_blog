@@ -153,7 +153,10 @@
 
         <!-- 页脚 -->
         <footer class="admin-footer">
-            <span>© {% if footer_copyright_year %}{{ footer_copyright_year }}{% else %}{{ now_year }}{% endif %} {% if footer_copyright_owner %}{{ footer_copyright_owner }}{% else %}{{ blog_name }}{% endif %} · 管理后台</span>
+            {# 这两个值存在 settings 表里，须走 config.get 读；直接取同名变量永远为空 #}
+            {%- set _yr = config.get('footer_copyright_year', '').strip() -%}
+            {%- set _owner = config.get('footer_copyright_owner', '').strip() -%}
+            <span>© {{ _yr if _yr else now_year }} {{ _owner if _owner else blog_name }} · 管理后台</span>
             <a href="{{ url_for('admin_upgrade') }}">
                 infowe Blog <b>v{{ version }}</b>{% if upgrade_available %} · 发现新版{% endif %}
             </a>
