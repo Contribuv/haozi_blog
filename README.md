@@ -220,6 +220,9 @@ error_page 404 /index.php;
 error_page 500 502 503 504 /static/50x.html;
 
 location ~ \.php$ {
+    # 缺这行时，脚本不存在会返回 Primary script unknown —— nginx 照样吐原生 404 页，
+    # 把「文件没上传」和「PHP 通道挂了」两种原因混在一起，看不出真实故障
+    try_files $uri =404;
     fastcgi_pass unix:/tmp/php-cgi-83.sock;
     fastcgi_index index.php;
     fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
@@ -237,6 +240,10 @@ location ~ \.php$ {
 - `502` 必须指向 `static/50x.html` 这个**预渲染静态文件**：nginx 连不上 PHP 时
   PHP 已经崩溃，无法现场渲染主题页。主题或样式改动后用
   `php bin/build_50x.php` 重新生成。
+- **排查 404 是 nginx 原生页还是主题页**：先在项目根放一个探针 `echo '<?php echo "PHPOK";' > t.php`，
+  访问 `https://你的域名/t.php`。返回 `PHPOK` 说明 PHP 通道正常，是文件没上传到位
+  （1.x 升级后 `index.php` 在根、`public/` 已删）；返回 nginx 原生页才是 `location ~ \.php$`
+  没生效，用 `nginx -T 2>/dev/null | grep -n 'location\|fastcgi\|root '` 查实际配置。
 - 修改后 `nginx -t` 检查语法，再 `nginx -s reload`。
 
 ### Nginx 完整示例（含 HTTPS）
@@ -267,6 +274,7 @@ server {
     error_page 500 502 503 504 /static/50x.html;
 
     location ~ \.php$ {
+        try_files $uri =404;
         fastcgi_pass unix:/tmp/php-cgi-83.sock;
         fastcgi_index index.php;
         fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
@@ -413,7 +421,19 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.0.0**
+当前版本：**2.1.0**
+
+### 从 2.0.0 升级到 2.1.0
+
+后台「一键升级」现在是**全量替换 + 清理旧文件**：磁盘上多出来的旧文件与目录一律删除，
+所以 1.x 残留的 `public/`、`admin.php` 不会再留在磁盘上冒充新结构。保留 `uploads/`、
+`data/`、`storage/`、`backups/`、`config/config.php`、`config/installed.lock`、`.user.ini`。
+
+若你是手动覆盖上传的，请自行确认旧目录已删：
+
+```bash
+cd /www/wwwroot/你的站点目录 && ls -la   # 确认无 public/ 与 admin.php 残留
+```
 
 ### 从 1.x 升级到 2.0.0（破坏性变更）
 

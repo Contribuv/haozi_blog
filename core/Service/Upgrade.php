@@ -21,8 +21,13 @@ class Upgrade
     /** 版本检测缓存有效期（秒） */
     public const CACHE_TTL = 600;
 
-    /** 升级时绝不覆盖的目录（用户数据 / 运行时数据 / 本地密钥配置） */
-    private const SKIP_DIRS = ['data', 'uploads', 'storage', 'backups', '.git', 'vendor', 'config'];
+    /**
+     * 升级时整棵跳过的顶层目录：用户数据 / 运行时数据 / 本地扩展 / 版本库。
+     * 刻意不含 config —— config 目录要跟着升级，只有 config/config.php 单个文件保留。
+     */
+    private const SKIP_DIRS = ['data', 'uploads', 'storage', 'backups', '.git', 'vendor'];
+    /** 升级时绝不覆盖、也绝不删除的文件（相对项目根）：本地密钥、安装标记、宝塔 open_basedir */
+    private const SKIP_FILES = ['config/config.php', 'config/installed.lock', '.user.ini'];
     /** 升级时绝不覆盖的文件后缀（数据库转储 / 会话） */
     private const SKIP_EXT = ['sql', 'session'];
 
@@ -270,8 +275,11 @@ class Upgrade
             if ($replaced === 0) {
                 throw new \RuntimeException('没有可替换的文件，已中止');
             }
+            // 6. 清理旧版本残留：只覆盖不删除，1.x 的 public/、admin.php 会留在磁盘上
+            $removed = self::prune($root);
             return [true, '升级成功：代码已从 v' . Context::VERSION . ' 更新为 v' . $tag
-                . '（替换 ' . $replaced . ' 个文件）。数据已自动备份到 backups/upgrade_' . $ts . '_' . $tag
+                . '（替换 ' . $replaced . ' 个文件，删除 ' . $removed . ' 个旧文件）。'
+                . '数据已自动备份到 backups/upgrade_' . $ts . '_' . $tag
                 . '，请重启服务生效。'];
         } catch (\Throwable $e) {
             return [false, '升级失败：' . $e->getMessage()];
@@ -421,7 +429,75 @@ class Upgrade
         if (in_array($top, self::SKIP_DIRS, true) || $rel === 'upgrade.lock' || str_starts_with($top, '.')) {
             return true;
         }
+        if (in_array($rel, self::SKIP_FILES, true)) {
+            return true;
+        }
         return in_array(strtolower((string) pathinfo($rel, PATHINFO_EXTENSION)), self::SKIP_EXT, true);
+    }
+
+    /**
+     * 删掉旧版本残留：新包里不存在的文件与目录一律移除。
+     * 这是 1.x → 2.0.0 这类破坏性升级的关键 —— 只覆盖不删除，
+     * 被移除的旧文件（如 public/、admin.php）会留在磁盘上，目录结构看起来没升级。
+     * 返回删除的条目数。
+     */
+    private static function prune(string $root): int
+    {
+        return self::pruneBetween(PHP_BLOG_ROOT, $root, '');
+    }
+
+    /**
+     * 删掉旧版本残留：$base 下存在、$root（新包）里没有的条目一律移除。
+     * 这是 1.x → 2.0.0 这类破坏性升级的关键 —— 只覆盖不删除，
+     * 被移除的旧文件（如 public/、admin.php）会留在磁盘上，目录结构看起来没升级。
+     * $rel 是 $base 相对项目根的路径，用于命中 SKIP_FILES（config/config.php 等）。
+     * 返回删除的条目数。
+     */
+    private static function pruneBetween(string $base, string $root, string $rel): int
+    {
+        $removed = 0;
+        foreach (self::children($base) as $name) {
+            $cur = $base . '/' . $name;
+            $sub = $rel === '' ? $name : $rel . '/' . $name;
+            // SKIP_DIRS 只认顶层目录名；SKIP_FILES 用完整相对路径
+            if (explode('/', $sub)[0] === $sub && in_array($sub, self::SKIP_DIRS, true)) {
+                continue;
+            }
+            if ($sub === 'upgrade.lock' || self::preserved($sub)) {
+                continue;
+            }
+            if (!file_exists($root . '/' . $name)) {
+                if (is_dir($cur)) {
+                    self::rmTree($cur);
+                    $removed++;
+                } elseif (@unlink($cur)) {
+                    $removed++;
+                }
+                continue;
+            }
+            if (is_dir($cur) && is_dir($root . '/' . $name)) {
+                $removed += self::pruneBetween($cur, $root . '/' . $name, $sub);
+            }
+        }
+        return $removed;
+    }
+
+    /** 该相对路径是否升级中绝不可动 */
+    private static function preserved(string $rel): bool
+    {
+        return in_array($rel, self::SKIP_FILES, true);
+    }
+
+    /** 列目录子项，去掉 . 与 .. */
+    private static function children(string $dir): array
+    {
+        $out = [];
+        foreach (scandir($dir) ?: [] as $n) {
+            if ($n !== '.' && $n !== '..') {
+                $out[] = $n;
+            }
+        }
+        return $out;
     }
 
     /** 递归删除临时目录 */
