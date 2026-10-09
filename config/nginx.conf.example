@@ -31,8 +31,11 @@ location / {
     try_files $uri $uri/ /index.php?$query_string;
 }
 
-# ⑤ 静态资源缓存
+# ⑤ 静态资源缓存（只此一处，切勿重复定义）
+#    必须带 charset：否则 nginx 直出的 js / css 不带 charset，直接访问会按本地编码解码 → 中文乱码
 location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$ {
+    charset utf-8;
+    charset_types application/javascript text/css;
     expires 30d;
     add_header Cache-Control "public";
     access_log off;

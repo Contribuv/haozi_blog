@@ -223,8 +223,11 @@ location / {
     try_files $uri $uri/ /index.php?$query_string;
 }
 
-# ⑤ 静态资源缓存
+# ⑤ 静态资源缓存（只此一处，切勿重复定义）
+#    必须带 charset：否则 nginx 直出的 js / css 不带 charset，直接访问会按本地编码解码 → 中文乱码
 location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$ {
+    charset utf-8;
+    charset_types application/javascript text/css;
     expires 30d;
     add_header Cache-Control "public";
     access_log off;
@@ -281,6 +284,8 @@ server {
     location / { try_files $uri $uri/ /index.php?$query_string; }
 
     location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$ {
+        charset utf-8;
+        charset_types application/javascript text/css;
         expires 30d;
         add_header Cache-Control "public";
         access_log off;
@@ -440,7 +445,17 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.1.1**
+当前版本：**2.1.2**
+
+### 从 2.1.1 升级到 2.1.2
+
+伪静态配置修正（本版只涉及配置样例与文档，PHP 代码无变更）：
+
+1. **修复直接访问 js / css 时中文乱码**：nginx 直出的静态文件按 `mime.types` 默认不带 charset，浏览器直接打开该 URL 时会按本地默认编码（中文环境常是 GBK）解码 UTF-8 文件 → 乱码。静态资源 location 现补充 `charset utf-8;` 与 `charset_types application/javascript text/css;`。
+2. **明确静态资源 location 只能有一处**：重复定义相同的 `location` 会让 `nginx -t` 报 `duplicate location`、reload 失败，配置看着改了实际不生效。
+3. README 精简过时的 1.x 升级说明。
+
+> 升级到本版后，请把服务器「伪静态」中的 ⑤ 静态资源 location 更新为 [`config/nginx.conf.example`](config/nginx.conf.example) 里的版本（补上那两行 `charset`），再执行 `nginx -t && nginx -s reload`。
 
 ### 从 2.1.0 升级到 2.1.1
 
@@ -476,20 +491,12 @@ rm -rf storage/cache/templates/*
 cd /www/wwwroot/你的站点目录 && ls -la   # 确认无 public/ 与 admin.php 残留
 ```
 
-### 从 1.x 升级到 2.0.0（破坏性变更）
+### 从 1.x 升级到 2.0.0（历史说明）
 
-1. **网站运行目录必须指向项目根目录**（含 `index.php` 的那一层），不再是 `public/`；
-   Nginx 用户同步改 `root` 并套用上文「伪静态与服务器配置」的完整示例
-   （新增对 `themes/` 模板源码、`uploads/` 内脚本的封锁规则）。
-2. **`public/` 已整体删除**：`themes/` 与 `static/` 上移到项目根，旧的
-   `public/themes`、`public/static` 路径全部失效。升级后若沿用旧 nginx 配置，
-   主题与静态资源会 404。
-3. **入口合并为单一 `index.php`**：`admin.php` 已移除，`/admin` 无需任何特殊配置。
-4. **错误页主题化**：403 / 404 / 500 由 `themes/<主题>/<code>.html` 渲染；
-   nginx 的 `error_page` 统一指向预渲染静态页 `static/{404,403,50x}.html`，
-   不经过 PHP（PHP 通道挂了也能出主题页）。改主题样式后须重跑
-   `php bin/build_50x.php`。
-5. `config/`、`storage/`、`uploads/`、`backups/`、`data/` 不受影响，升级不会被覆盖。
+- **运行目录改为项目根**（含 `index.php` 的那一层）：`public/` 已整体删除，`themes/`、`static/` 上移到根，沿用旧 nginx 配置会导致主题与静态资源 404；
+- **入口合并为单一 `index.php`**：`admin.php` 已移除，`/admin` 无需额外配置；
+- **错误页主题化**：nginx 的 `error_page` 指向预渲染静态页 `static/{404,403,50x}.html`，改主题样式后重跑 `php bin/build_50x.php`；
+- `config/`、`storage/`、`uploads/`、`backups/`、`data/` 升级不会被覆盖。
 
 ## 开源
 
