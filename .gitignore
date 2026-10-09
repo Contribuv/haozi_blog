@@ -1,0 +1,22 @@
+# ── 运行时配置（含数据库凭据，分发时只带 config.sample.php）──
+/config/config.php
+/config/config.php.*
+
+# ── 安装完成标记 ──
+/config/installed.lock
+
+# ── 运行期数据、备份与上传（随部署环境生成，不入库）──
+/data/
+/backups/
+/uploads/
+/storage/
+/public/static/cache/
+
+# ── 本地工具链 ──
+/.toolchain/
+
+# ── 编辑器与系统文件 ──
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

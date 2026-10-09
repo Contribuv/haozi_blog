@@ -1,0 +1,8 @@
+{
+    "name": "example",
+    "title": "示例插件",
+    "version": "1.0.0",
+    "author": "infowe",
+    "enabled": false,
+    "description": "演示如何通过 Hook::on() 挂载钩子。默认停用，把 enabled 改为 true 即生效。"
+}
