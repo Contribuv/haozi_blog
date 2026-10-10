@@ -1,55 +1,47 @@
-# ───────────────────────────────────────────────────────────────────
-# PHP_blog 伪静态配置样例（宝塔面板：网站 → 设置 → 伪静态，整段粘贴）
+# ───────────────────────────────────────────────────────────────
+# PHP_blog 伪静态配置（宝塔：网站 → 设置 → 伪静态，整段粘贴）
 #
-# 使用前提：网站运行目录指向项目根目录（含 index.php 的那一层），URL 与磁盘一一对应。
-# fastcgi_pass 的 socket 路径按实际 PHP 版本修改，宝塔一般是 /tmp/php-cgi-XX.sock。
+# 前提：网站运行目录指向项目根（含 index.php 那一层）。
+# fastcgi_pass 的 socket 路径按实际 PHP 版本改，宝塔一般为 /tmp/php-cgi-XX.sock。
 #
-# ⚠️ 最容易踩、也最致命的坑（务必照抄，不要改）：
-#     错误页必须指向「预渲染静态文件」static/{404,403,50x}.html，
-#     绝不能写成 error_page 404 /index.php。
-#   因为 404 / 403 / 502 恰恰发生在 PHP 通道本身不可用的时候（文件没上传、fastcgi 挂了），
-#   此时再让 nginx 内部走一次 PHP，只会拿到 nginx 原生错误页 —— 这正是
-#   「错误页不跟主题走、始终是原生页」的根本原因。
-#   静态页由 php bin/build_50x.php 生成，后台「切换主题」时也会自动重建。
-# ───────────────────────────────────────────────────────────────────
+# 三处不能省：
+#   1. error_page 必须指向预渲染静态文件 static/{404,403,50x}.html，不可写 /index.php。
+#      404 / 403 / 502 恰恰发生在 PHP 通道本身不可用的时候，此时内部再走一次 PHP
+#      只会退回 nginx 原生页。静态页由 php bin/build_50x.php 生成（后台切换主题时自动重建）。
+#   2. 静态资源那段的 charset / charset_types 不能删，否则直出的 css / js 中文乱码。
+#   3. 敏感目录的封锁不能删（config/config.php 就是数据库密码）。
+#
+# ⚠️ 切勿追加 location ~* \.sql$ { deny all; } 这类「后缀黑名单」：
+#    后台备份下载走 /admin/export/download/*.sql，会被一并拦掉，表现为点「下载」返回 404。
+#    backups/ 目录已由下面的目录级规则封锁，无需再按后缀拦。
+# ───────────────────────────────────────────────────────────────
 
-# ① 源码与数据目录：禁止 Web 访问（缺了这条 config/config.php 可被直接下载）
-location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { deny all; return 404; }
-location ~ /\.            { deny all; return 404; }
+# 敏感目录与文件：禁止 Web 访问
+location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { return 404; }
+location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
+location ~ ^/themes/.+\.(html|json)$        { return 404; }
+location ~ ^/uploads/(.*/)?\.               { return 404; }
+location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
 
-# ② 主题目录只放行静态资源：theme.css / theme.js / preview.png
-location ~ ^/themes/.+\.(html|json)$ { deny all; return 404; }
+# 伪静态：非真实文件 / 目录交给前端控制器
+location / { try_files $uri $uri/ /index.php?$query_string; }
 
-# ③ 上传目录：正常图片可访问，但隐藏目录（无痕原图 .originals）与可执行脚本一律拒绝
-#    注意别写成 location ~* /uploads/.*/ —— 那会连正常的 /uploads/2026/08/xxx.jpg 也拦掉
-location ~ ^/uploads/(?:.*/)?\.[^/]*        { deny all; return 404; }
-location ~* ^/uploads/.*\.(php|phtml|phar)$ { deny all; return 404; }
-
-# ④ 伪静态：非真实文件/目录一律交给前端控制器（static/ 与 themes/ 下的真实文件由 nginx 直出）
-location / {
-    try_files $uri $uri/ /index.php?$query_string;
-}
-
-# ⑤ 静态资源缓存（只此一处，切勿重复定义）
-#    必须带 charset：否则 nginx 直出的 js / css 不带 charset，直接访问会按本地编码解码 → 中文乱码
-location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$ {
+# 静态资源缓存
+location ~* \.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf)$ {
     charset utf-8;
     charset_types application/javascript text/css;
     expires 30d;
-    add_header Cache-Control "public";
     access_log off;
 }
 
-# ⑥ 错误页：全部指向预渲染静态文件，不经过 PHP。
-#    404 与 403 各有独立页面，少任何一行该状态码都会退回 nginx 原生页。
+# 错误页：指向预渲染静态文件，不经过 PHP
 error_page 404 /static/404.html;
 error_page 403 /static/403.html;
 error_page 500 502 503 504 /static/50x.html;
 
+# PHP
 location ~ \.php$ {
-    # 缺这行时，脚本不存在会返回 Primary script unknown —— nginx 照样吐原生 404 页，
-    # 把「文件没上传」和「PHP 通道挂了」两种原因混在一起，看不出真实故障
     try_files $uri =404;
     fastcgi_pass unix:/tmp/php-cgi-83.sock;
     fastcgi_index index.php;

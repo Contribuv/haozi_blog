@@ -162,7 +162,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 判断，删除 `install.php` 同样安全）：
 
 ```nginx
-location = /install.php { deny all; return 404; }
+location = /install.php { return 404; }
 ```
 
 ### 手动安装（可选）
@@ -187,61 +187,39 @@ php bin/migrate.php         # 结构迁移
 
 宝塔面板：**网站 → 设置 → 伪静态**，粘贴以下内容（`fastcgi_pass` 的 socket 路径按实际
 PHP 版本修改，宝塔一般位于 `/tmp/php-cgi-XX.sock`）。同一份内容也存于
-[`config/nginx.conf.example`](config/nginx.conf.example)，可直接复制，避免抄漏 `error_page` 行。
+[`config/nginx.conf.example`](config/nginx.conf.example)，可直接复制。
+
+> **切勿自行追加「后缀黑名单」**，例如 `location ~* \.sql$ { deny all; }`：后台的备份下载
+> 走 `/admin/export/download/*.sql`，会被一并拦掉，表现为点「下载」返回 404。`backups/`
+> 目录已由下面的目录级规则封锁，无需再按后缀拦。详见「常见问题 → 备份文件点下载返回 404」。
 
 ```nginx
-# ───────────────────────────────────────────────────────────────────
-# PHP_blog 伪静态配置样例（宝塔面板：网站 → 设置 → 伪静态，整段粘贴）
-#
-# 使用前提：网站运行目录指向项目根目录（含 index.php 的那一层），URL 与磁盘一一对应。
-# fastcgi_pass 的 socket 路径按实际 PHP 版本修改，宝塔一般是 /tmp/php-cgi-XX.sock。
-#
-# ⚠️ 最容易踩、也最致命的坑（务必照抄，不要改）：
-#     错误页必须指向「预渲染静态文件」static/{404,403,50x}.html，
-#     绝不能写成 error_page 404 /index.php。
-#   因为 404 / 403 / 502 恰恰发生在 PHP 通道本身不可用的时候（文件没上传、fastcgi 挂了），
-#   此时再让 nginx 内部走一次 PHP，只会拿到 nginx 原生错误页 —— 这正是
-#   「错误页不跟主题走、始终是原生页」的根本原因。
-#   静态页由 php bin/build_50x.php 生成，后台「切换主题」时也会自动重建。
-# ───────────────────────────────────────────────────────────────────
-
-# ① 源码与数据目录：禁止 Web 访问（缺了这条 config/config.php 可被直接下载）
-location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { deny all; return 404; }
-location ~ /\.            { deny all; return 404; }
+# 敏感目录与文件：禁止 Web 访问（缺了这条 config/config.php 可被直接下载）
+location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { return 404; }
+location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
+location ~ ^/themes/.+\.(html|json)$        { return 404; }
+location ~ ^/uploads/(.*/)?\.               { return 404; }
+location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
 
-# ② 主题目录只放行静态资源：theme.css / theme.js / preview.png
-location ~ ^/themes/.+\.(html|json)$ { deny all; return 404; }
+# 伪静态：非真实文件 / 目录交给前端控制器
+location / { try_files $uri $uri/ /index.php?$query_string; }
 
-# ③ 上传目录：正常图片可访问，但隐藏目录（无痕原图 .originals）与可执行脚本一律拒绝
-#    注意别写成 location ~* /uploads/.*/ —— 那会连正常的 /uploads/2026/08/xxx.jpg 也拦掉
-location ~ ^/uploads/(?:.*/)?\.[^/]*        { deny all; return 404; }
-location ~* ^/uploads/.*\.(php|phtml|phar)$ { deny all; return 404; }
-
-# ④ 伪静态：非真实文件/目录一律交给前端控制器（static/ 与 themes/ 下的真实文件由 nginx 直出）
-location / {
-    try_files $uri $uri/ /index.php?$query_string;
-}
-
-# ⑤ 静态资源缓存（只此一处，切勿重复定义）
-#    必须带 charset：否则 nginx 直出的 js / css 不带 charset，直接访问会按本地编码解码 → 中文乱码
-location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$ {
+# 静态资源缓存（charset 不可省，否则直出的 css / js 中文乱码）
+location ~* \.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf)$ {
     charset utf-8;
     charset_types application/javascript text/css;
     expires 30d;
-    add_header Cache-Control "public";
     access_log off;
 }
 
-# ⑥ 错误页：全部指向预渲染静态文件，不经过 PHP。
-#    404 与 403 各有独立页面，少任何一行该状态码都会退回 nginx 原生页。
+# 错误页：指向预渲染静态文件，不经过 PHP
 error_page 404 /static/404.html;
 error_page 403 /static/403.html;
 error_page 500 502 503 504 /static/50x.html;
 
+# PHP
 location ~ \.php$ {
-    # 缺这行时，脚本不存在会返回 Primary script unknown —— nginx 照样吐原生 404 页，
-    # 把「文件没上传」和「PHP 通道挂了」两种原因混在一起，看不出真实故障
     try_files $uri =404;
     fastcgi_pass unix:/tmp/php-cgi-83.sock;
     fastcgi_index index.php;
@@ -263,9 +241,12 @@ location ~ \.php$ {
   访问 `https://你的域名/t.php`。返回 `PHPOK` 说明 PHP 通道正常，是文件没上传到位
   （1.x 升级后 `index.php` 在根、`public/` 已删）；返回 nginx 原生页才是 `location ~ \.php$`
   没生效，用 `nginx -T 2>/dev/null | grep -n 'location\|fastcgi\|root '` 查实际配置。
+- **不要追加「后缀黑名单」**（如 `location ~* \.sql$ { deny all; }`）：后台备份下载走
+  `/admin/export/download/*.sql`，被这类规则拦掉后表现为点「下载」返回 404。`backups/`
+  目录已由上面的目录级规则封锁，无需再按后缀拦。详见「常见问题 → 备份文件点下载返回 404」。
 - 修改后 `nginx -t` 检查语法，再 `nginx -s reload`。
 
-### Nginx 完整示例（含 HTTPS）
+### Nginx 完整示例（server 块，HTTPS 自行补 ssl 两行）
 
 ```nginx
 server {
@@ -274,20 +255,19 @@ server {
     root /www/wwwroot/www.infowe.site;
     index index.php;
 
-    location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { deny all; return 404; }
-    location ~ /\.            { deny all; return 404; }
+    location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { return 404; }
+    location ~ /\.            { return 404; }
     location ^~ /.well-known/ { allow all; }
-    location ~ ^/themes/.+\.(html|json)$ { deny all; return 404; }
-    location ~ ^/uploads/(?:.*/)?\.[^/]*        { deny all; return 404; }
-    location ~* ^/uploads/.*\.(php|phtml|phar)$ { deny all; return 404; }
+    location ~ ^/themes/.+\.(html|json)$        { return 404; }
+    location ~ ^/uploads/(.*/)?\.               { return 404; }
+    location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
 
     location / { try_files $uri $uri/ /index.php?$query_string; }
 
-    location ~* ^/(static|themes)/.*\.(css|js|png|jpg|jpeg|gif|webp|svg|ico|woff2?|ttf)$ {
+    location ~* \.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf)$ {
         charset utf-8;
         charset_types application/javascript text/css;
         expires 30d;
-        add_header Cache-Control "public";
         access_log off;
     }
 
@@ -322,6 +302,11 @@ server {
 ### 宝塔 open_basedir（重要）
 
 网站运行目录就是项目根，因此内核与数据目录天然都在 open_basedir 白名单内，通常无需处理。
+> 宝塔把 open_basedir 这项叫**「防跨站攻击」**：它只限制 PHP 读文件的**路径范围**，
+> 越界时报 `open_basedir restriction` 警告 / 错误，**与页面 404、备份下载 404 无关**。
+> 若你的症状是点备份「下载」返回 404，见「常见问题 → 备份文件点下载返回 404」，
+> 不要为此关闭「防跨站攻击」。
+
 若面板仍限制了路径导致首页报：
 
 ```
@@ -428,6 +413,23 @@ rm -rf storage/cache/templates/*
 运行目录应指向**项目根**（含 `index.php` 的那一层）。Nginx 还需确认 `config`、`core`
 等目录的 `deny all` 与 `themes/` 的模板封锁规则都未被误删。见上文「伪静态与服务器配置」。
 
+### 备份文件点下载返回 404
+
+后台备份的 SQL 落在站点根 `backups/` 目录，下载一律走 `/admin/export/download/<文件名>`
+（`ExportController::download()` 先做文件名安全化，文件不存在才 `abort404()`）。
+出现 404 时按此顺序排查：
+
+1. **服务器 nginx 拦了 `.sql` 后缀**（最常见）：宝塔的「网站防火墙 / 安全加固」，或自行添加的
+   `location ~* \.sql$ { deny all; return 404; }`，会把备份下载一并拦掉，去掉该规则即可。
+   正确做法是只封锁 `backups/` 目录（本项目的伪静态已含），而不是按后缀拦。
+   确认命令：`nginx -T 2>/dev/null | grep -n 'sql'`。
+2. **文件确实不存在**：备份目录被清理或迁移后，列表还显示旧记录。重新点「备份数据库」生成，
+   或到服务器上核对 `ls -l /www/wwwroot/www.infowe.site/backups/`。
+3. **前置 CDN / 反向代理的「文件下载拦截」**同样会返回 404，需在 CDN 侧放行 `.sql`。
+
+> 与宝塔「防跨站攻击」（open_basedir）无关：那项只限制 PHP 读文件的路径范围，越界报的是
+> `open_basedir restriction` 警告/错误而非 404，别误关（见上文「宝塔 open_basedir」）。
+
 ### 想改 403 / 404 / 500 / 502 页面
 
 编辑 `themes/<主题名>/403.html`、`404.html`、`500.html`、`502.html`，然后：
@@ -445,7 +447,20 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.2.4**
+当前版本：**2.2.5**
+
+### 从 2.2.4 升级到 2.2.5
+
+三项改动：
+
+1. **伪静态示例精简**：`README` 与 `config/nginx.conf.example` 中的样例由「六段带长注释」收敛为五组规则 —— `deny all; return 404;` 简化为 `return 404;`（`return` 本身已直接返回，`deny` 是冗余），去掉 `add_header Cache-Control`（`expires` 已自带该头），静态资源缓存从 `^/(static|themes)/` 前缀改为按扩展名匹配。**服务器上既有的旧配置无需改动**，两者功能等价，想统一写法再粘贴新样例即可。
+2. **补充「备份文件点下载返回 404」的排查**：后台备份下载走 `/admin/export/download/*.sql`，若服务器 nginx / 宝塔安全加固或前置 CDN 对 `.sql` 后缀设了拒绝规则，就会被拦成 404（`backups/` 目录本身已有目录级封锁，无需再按后缀拦）。同时说明：宝塔把 open_basedir 称作「防跨站攻击」，它只限制 PHP 读文件的路径范围，越界报的是 `open_basedir restriction` 而非 404，不要为此关闭它。
+3. **编辑器移除录音按钮**：工具栏的「开始录音 / 结束录音」在本站用不上，已在编辑器初始化处显式声明工具栏并去掉 `record` 项。
+
+> 无数据库结构变更；nginx 只需核对是否存在 `.sql` 后缀黑名单，既有规则本身无需改动。
+
+<details>
+<summary><b>历史版本日志（点击展开）</b></summary>
 
 ### 从 2.2.3 升级到 2.2.4
 
@@ -456,9 +471,6 @@ rm -rf storage/cache/templates/*
 3. **列表批量操作只对最后一项生效**：勾选框提交的是同名字段（如 `link_ids`），`a=1&a=2` 只有 `a[]` 形式才会被 PHP 解析成数组，否则后者覆盖前者，导致批量删除 / 批量操作实际只处理了最后一条。涉及文章、评论、友链、分类、项目、时间线、文件清理共 7 处，现已全部改为数组字段。
 
 > 本版无数据库结构与 nginx 配置变更，后台一键升级即可。
-
-<details>
-<summary><b>历史版本日志（点击展开）</b></summary>
 
 ### 从 2.2.2 升级到 2.2.3
 
