@@ -118,7 +118,9 @@ class Upgrade
     public static function checkLatestVersion(bool $force = false): ?array
     {
         $cache = self::loadCache();
-        if (!$force && $cache['t'] > 0 && (time() - $cache['t']) < self::CACHE_TTL) {
+        // 只认「成功结果」的缓存：失败不再落缓存，否则一次网络抖动会让接下来整个
+        // CACHE_TTL 内直接返回 null，表现为「明明有 Gitee 镜像却查不到更新」
+        if (!$force && $cache['info'] !== null && $cache['t'] > 0 && (time() - $cache['t']) < self::CACHE_TTL) {
             return $cache['info'];
         }
         $info = null;
@@ -126,12 +128,15 @@ class Upgrade
         if ($gh !== null) {
             $info = $gh;
         } else {
+            // GitHub 打不开 / 超时 / 限流 / 返回内容非法 → 回退 Gitee 镜像
             $gitee = self::giteeRepo();
             if ($gitee !== '') {
                 $info = self::giteeLatest($gitee);
             }
         }
-        self::saveCache(time(), $info);
+        if ($info !== null) {
+            self::saveCache(time(), $info);
+        }
         return $info;
     }
 
