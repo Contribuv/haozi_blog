@@ -322,3 +322,32 @@
   .markdown-body h1 { font-size: 1.7em; }
   .markdown-body h2 { font-size: 1.35em; }
 }
+
+/* ── 附件下载链接的文件类型图标 ──
+   编辑器插入的是纯 markdown 链接 [文件名](url)（不改动正文内容），
+   这里按 href 后缀给前台渲染结果加前置图标；图标用 mask 着色，跟随链接色与深浅主题。
+   注意：href 带查询串（?v=1）时后缀选择器不匹配，属预期取舍。 */
+.markdown-body a:is(
+  [href$=".zip"], [href$=".rar"], [href$=".7z"], [href$=".tar"], [href$=".gz"], [href$=".bz2"],
+  [href$=".pdf"], [href$=".doc"], [href$=".docx"], [href$=".xls"], [href$=".xlsx"], [href$=".ppt"], [href$=".pptx"], [href$=".csv"],
+  [href$=".txt"], [href$=".md"], [href$=".py"], [href$=".js"], [href$=".json"]
+)::before {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: .34em;
+  vertical-align: -.14em;
+  background-color: currentColor;
+  -webkit-mask: var(--doc-icon) center / contain no-repeat;
+  mask: var(--doc-icon) center / contain no-repeat;
+}
+.markdown-body a:is([href$=".zip"], [href$=".rar"], [href$=".7z"], [href$=".tar"], [href$=".gz"], [href$=".bz2"]) {
+  --doc-icon: url(../icons/archive.svg);
+}
+.markdown-body a:is([href$=".pdf"], [href$=".doc"], [href$=".docx"], [href$=".xls"], [href$=".xlsx"], [href$=".ppt"], [href$=".pptx"], [href$=".csv"]) {
+  --doc-icon: url(../icons/file-text.svg);
+}
+.markdown-body a:is([href$=".txt"], [href$=".md"], [href$=".py"], [href$=".js"], [href$=".json"]) {
+  --doc-icon: url(../icons/code.svg);
+}

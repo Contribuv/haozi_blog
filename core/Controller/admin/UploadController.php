@@ -19,7 +19,7 @@ class UploadController extends BaseController
     {
         Auth::requireAdmin();
         $file = $_FILES['image'] ?? null;
-        [$url, $err] = Upload::save(is_array($file) ? $file : [], Upload::IMAGE_EXT);
+        [$url, $err] = Upload::save(is_array($file) ? $file : [], Upload::imageExt());
         if ($err !== '') {
             Response::json(['error' => $err], 400);
         }
@@ -31,7 +31,7 @@ class UploadController extends BaseController
     {
         Auth::requireAdmin();
         $file = $_FILES['file'] ?? $_FILES['media'] ?? null;
-        [$url, $err] = Upload::save(is_array($file) ? $file : [], Upload::MEDIA_EXT);
+        [$url, $err] = Upload::save(is_array($file) ? $file : [], Upload::mediaExt());
         if ($err !== '') {
             Response::json(['error' => $err], 400);
         }
@@ -43,7 +43,7 @@ class UploadController extends BaseController
     {
         Auth::requireAdmin();
         $file = $_FILES['file'] ?? null;
-        [$url, $err] = Upload::save(is_array($file) ? $file : [], Upload::FILE_EXT);
+        [$url, $err] = Upload::save(is_array($file) ? $file : [], Upload::fileExt());
         if ($err !== '') {
             Response::json(['error' => $err], 400);
         }

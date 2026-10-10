@@ -88,7 +88,7 @@
                             <span class="tag-suggest-label">常用</span><span class="tag-chips" id="tags-common"></span>
                         </div>
                     </div>
-                    <small class="form-hint">自动识别与常用标签可直接点击加入，也可手动输入补充</small>
+                    <small class="form-hint">标签会根据标题与正文自动填入，可在下方点击补充，也可手动输入修改</small>
                 </div>
                 <div class="form-group">
                     <label>摘要</label>
@@ -111,11 +111,24 @@
         </aside>
     </div>
 </form>
+
+<!-- 上传进度浮窗：屏幕居中，全部完成后自动淡出 -->
+<div class="upload-mask" id="upload-mask" hidden>
+    <div class="upload-panel" role="status" aria-live="polite">
+        <div class="upload-panel-head">
+            <span class="upload-panel-title" id="upload-title">正在上传</span>
+            <span class="upload-panel-count" id="upload-count"></span>
+        </div>
+        <div class="upload-bar"><span class="upload-bar-fill" id="upload-bar-fill"></span></div>
+        <div class="upload-panel-pct" id="upload-pct">0%</div>
+    </div>
+</div>
 {% endblock %}
 
 {% block admin_scripts %}
 <script src="{{ url_for('static', filename='vendor/vditor/index.min.js') }}"></script>
 <script type="application/json" id="all-tags-data">{{ all_tags | tojson }}</script>
+<script type="application/json" id="upload-cfg-data">{{ upload_cfg | tojson }}</script>
 <script>
 (function () {
     var textarea = document.getElementById('content');
@@ -244,6 +257,41 @@
         return Object.keys(count).filter(function (t) { return count[t] >= 2; })
             .sort(function (a, b) { return count[b] - count[a]; });
     }
+    // 中文常见停用词（虚词 / 泛化词）：整词命中即丢弃，避免「我们可以」「这个方法」之类被当作标签
+    var CN_STOP = new Set(('我们,你们,他们,她们,它们,自己,大家,这个,那个,这些,那些,什么,怎么,怎样,为什么,因为,所以,但是,不过,而且,并且,如果,虽然,可以,能够,需要,应该,已经,正在,一直,还是,或者,也是,就是,不是,没有,一个,一些,一样,这里,那里,时候,现在,今天,明天,昨天,很多,非常,可能,主要,相关,通过,使用,进行,实现,支持,以及,然后,同时,例如,比如,包括,其中,以下,以上,下面,上面,首先,其次,最后,总结,介绍,开始,结束,之后,之前,目前,一般,通常,由于,因此,于是,这样,那样,如何,是否,一定,必须,各种,不同,相同,工作,方法,方式,问题,情况,内容,部分,结果,过程,方面,时候').split(','));
+    // 统计文本中的中文词组（2-4 字 n-gram）出现次数
+    function countChineseNgrams(text, count) {
+        if (!text) return;
+        var segs = text.match(/[\u4e00-\u9fff]{2,}/g) || [];
+        segs.forEach(function (seg) {
+            for (var n = 2; n <= 4; n++) {
+                for (var i = 0; i + n <= seg.length; i++) {
+                    var g = seg.substr(i, n);
+                    if (CN_STOP.has(g)) continue;
+                    count[g] = (count[g] || 0) + 1;
+                }
+            }
+        });
+    }
+    // 从标题 + 正文提取中文术语：标题与正文合并计数，出现 ≥2 次才入选
+    // （阈值过滤只出现一次的碎片词，也避免标题里「搭建教程」这类跨词边界的噪声入选）
+    function extractChineseTerms(titleText, bodyText) {
+        var count = {};
+        countChineseNgrams(titleText, count);
+        countChineseNgrams(bodyText, count);
+        var list = Object.keys(count).filter(function (t) { return count[t] >= 2; })
+            .sort(function (a, b) {
+                if (b.length !== a.length) return b.length - a.length;   // 长度优先（更具体的词组）
+                return count[b] - count[a];
+            });
+        // 覆盖去重：若已被更长的词组包含，则丢弃，避免「数据库」与「数据」「据库」并存
+        var kept = [];
+        list.forEach(function (t) {
+            var covered = kept.some(function (k) { return k.indexOf(t) !== -1; });
+            if (!covered) kept.push(t);
+        });
+        return kept;
+    }
     // 自动填入状态：
     // autoLocked=true 表示用户已手动接管（打开时标签框已有内容，或手动增删过标签），此后永不自动填入；
     // autoFilled 记录已由本机制填入的标签（原始大小写），用于判断输入框是否仍与自动结果完全一致。
@@ -283,22 +331,24 @@
     // 常用区：匹配本文的已有标签按频率排序 → 复用历史标签保证一致性，不再给整站 Top 6
     function renderChips() {
         if (!tagsInput || !tagsAuto || !tagsCommon) return;
-        var source = tagsInput.value + ' ' +
-            (document.getElementById('title') ? document.getElementById('title').value : '') + ' ' +
-            (typeof vditor !== 'undefined' && vditor ? vditor.getValue() : '');
+        var titleEl = document.getElementById('title');
+        var titleVal = titleEl ? titleEl.value : '';
+        var bodyVal = (typeof vditor !== 'undefined' && vditor) ? vditor.getValue() : '';
+        var source = tagsInput.value + ' ' + titleVal + ' ' + bodyVal;
         var byFreq = Object.keys(ALL_TAGS).sort(function (a, b) { return ALL_TAGS[b] - ALL_TAGS[a]; });
         // 匹配本文的已有标签（去重当前已选）→ 常用区候选 + 自动填入来源
         var matchedKnown = byFreq.filter(function (t) { return !hasTag(t) && isMatch(t, source); });
-        // 自动识别区：仅正文术语提取（≥3字符、非停用词、出现≥2次），不再混入历史标签，避免老标签污染新文章
+        // 自动识别区：英文术语 + 中文词组（标题与正文合并统计），不再混入历史标签，避免老标签污染新文章
         var seen = {};
         var auto = [];
-        extractEnglishTerms(source).forEach(function (t) {
+        extractEnglishTerms(source).concat(extractChineseTerms(titleVal, bodyVal)).forEach(function (t) {
             var k = t.toLowerCase();
             if (!seen[k] && !hasTag(t)) { seen[k] = 1; auto.push(t); }
         });
         auto = auto.slice(0, 6);   // 上限 6：窄侧栏一组一行到两行，防拥挤（常用区同理）
-        // 自动填入仅限匹配本文的已有标签；若已自动填充，渲染已由内部递归完成，直接结束避免旧列表覆盖
-        if (autoAddTags(matchedKnown)) return;
+        // 自动填入：历史已有标签优先（保证一致性），其后补入本文识别出的新词（含中文）；
+        // 若已自动填充，渲染已由内部递归完成，直接结束避免旧列表覆盖
+        if (autoAddTags(matchedKnown.concat(auto))) return;
         // 常用区：匹配本文的已有标签按频率展示，不再给整站 Top 6 无关标签
         var common = matchedKnown.slice(0, 6);
         paintChips(tagsAuto, auto);
@@ -332,26 +382,85 @@
         return currentTheme() === 'dark' ? 'github-dark' : 'github';
     }
 
-    // 单个文件上传（fetch 到现有后端接口）
-    function uploadOne(endpoint, field, file) {
-        var fd = new FormData();
-        fd.append(field, file);
-        return fetch(endpoint, { method: 'POST', body: fd })
-            .then(function (r) { return r.json(); })
-            .then(function (data) {
-                if (data.error) throw new Error(data.error);
-                return { url: data.url, name: data.name || file.name };
-            });
+    // -- 上传：白名单/大小上限来自后台「上传设置」，与后端校验保持一致 --
+    var UPLOAD_CFG = JSON.parse(document.getElementById('upload-cfg-data').textContent || '{}');
+    function extOf(name) { return '.' + ((String(name).split('.').pop() || '').toLowerCase()); }
+    // 按配置判定文件类别；不在任一白名单内返回 ''
+    function kindOf(file) {
+        var e = extOf(file.name);
+        if ((UPLOAD_CFG.image || []).indexOf(e) !== -1) return 'image';
+        if ((UPLOAD_CFG.media || []).indexOf(e) !== -1) return 'media';
+        if ((UPLOAD_CFG.file || []).indexOf(e) !== -1) return 'file';
+        return '';
     }
 
-    // 根据扩展名分流到不同接口
-    function resolve(file) {
-        var ext = (file.name.split('.').pop() || '').toLowerCase();
-        if (['png','jpg','jpeg','gif','webp','bmp','svg','heic','heif'].indexOf(ext) !== -1)
-            return uploadOne('/admin/upload/image', 'image', file).then(function (d) { return { type: 'image', url: d.url, name: d.name }; });
-        if (['mp4','webm','ogg','mov','avi','mp3','wav','m4a','aac'].indexOf(ext) !== -1)
-            return uploadOne('/admin/upload/media', 'file', file).then(function (d) { return { type: 'media', url: d.url, name: d.name }; });
-        return uploadOne('/admin/upload/file', 'file', file).then(function (d) { return { type: 'file', url: d.url, name: d.name }; });
+    // 单个文件上传：用 XHR 以便上报进度（fetch 无法获取上传进度）
+    function uploadOne(endpoint, field, file, onProgress) {
+        return new Promise(function (resolve, reject) {
+            var fd = new FormData();
+            fd.append(field, file);
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', endpoint, true);
+            xhr.responseType = 'json';
+            xhr.upload.onprogress = function (e) {
+                if (onProgress) onProgress(e.lengthComputable ? e.loaded : 0);
+            };
+            xhr.onload = function () {
+                var data = xhr.response;
+                if (!data) { try { data = JSON.parse(xhr.responseText); } catch (err) { data = null; } }
+                if (xhr.status >= 200 && xhr.status < 300 && data && !data.error) {
+                    resolve({ url: data.url, name: data.name || file.name });
+                } else {
+                    reject(new Error((data && data.error) || ('上传失败（HTTP ' + xhr.status + '）')));
+                }
+            };
+            xhr.onerror = function () { reject(new Error('网络错误，上传失败')); };
+            xhr.send(fd);
+        });
+    }
+
+    // 按类别分流到对应接口
+    function resolve(file, onProgress) {
+        var kind = kindOf(file);
+        if (kind === '') {
+            return Promise.reject(new Error('不支持的文件类型：' + extOf(file.name)));
+        }
+        var endpoint = kind === 'image' ? '/admin/upload/image'
+            : (kind === 'media' ? '/admin/upload/media' : '/admin/upload/file');
+        var field = kind === 'image' ? 'image' : 'file';
+        return uploadOne(endpoint, field, file, onProgress).then(function (d) {
+            return { type: kind, url: d.url, name: d.name };
+        });
+    }
+
+    // -- 上传进度浮窗：屏幕居中，全部完成后淡出 --
+    var uploadMask = document.getElementById('upload-mask');
+    var uploadTitle = document.getElementById('upload-title');
+    var uploadBarFill = document.getElementById('upload-bar-fill');
+    var uploadPct = document.getElementById('upload-pct');
+    var uploadCount = document.getElementById('upload-count');
+    var uploadHideTimer = null;
+    function paintUploadProgress(ratio, done, total) {
+        var pct = Math.max(0, Math.min(100, Math.round(ratio * 100)));
+        if (uploadBarFill) uploadBarFill.style.width = pct + '%';
+        if (uploadPct) uploadPct.textContent = pct + '%';
+        if (uploadCount) uploadCount.textContent = total ? done + '/' + total : '';
+        // 字节已传完但服务端仍在处理（压缩/水印/落盘）时，提示「正在处理」，避免进度条停在 100% 让人以为卡住
+        if (uploadTitle) uploadTitle.textContent = (total && done < total && ratio >= 1) ? '正在处理' : '正在上传';
+    }
+    function showUploadProgress(total) {
+        if (!uploadMask) return;
+        if (uploadHideTimer) { clearTimeout(uploadHideTimer); uploadHideTimer = null; }
+        uploadMask.hidden = false;
+        paintUploadProgress(0, 0, total);
+    }
+    function hideUploadProgress() {
+        if (!uploadMask) return;
+        // 稍作停留让 100% 可见，再隐藏（淡出由 CSS 过渡完成）
+        uploadHideTimer = setTimeout(function () {
+            uploadMask.hidden = true;
+            paintUploadProgress(0, 0, 0);
+        }, 360);
     }
 
     // 构造插入内容（wysiwyg 模式接受 HTML）
@@ -381,17 +490,45 @@
         input: renderChips,   // 内容变化时同步更新标签自动识别
         toolbarConfig: { pin: true },
         upload: {
-            accept: 'image/*,video/*,audio/*,.heic,.heif,.zip,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.py,.js,.json',
+            accept: UPLOAD_CFG.accept || '',
             filename: function (name) { return name.replace(/[^\w\u4e00-\u9fa5\.\-]/g, '_'); },
             // 纯自定义 handler：自行上传并插入定制内容，避免 Vditor 默认 succMap 插入格式不符
             handler: function (files) {
                 var list = Array.prototype.slice.call(files);
-                return Promise.all(list.map(resolve)).then(function (results) {
+                if (!list.length) return Promise.resolve({ code: 0, data: { errFiles: [], succMap: {} } });
+                // 前置拦截白名单外的类型，避免发无效请求
+                var bad = list.filter(function (f) { return !kindOf(f); });
+                if (bad.length) {
+                    alert('以下文件类型不支持：' + bad.map(function (f) { return f.name; }).join('、'));
+                    return Promise.resolve({ code: 1, msg: '不支持的文件类型', data: { errFiles: bad.map(function (f) { return f.name; }), succMap: {} } });
+                }
+                // 聚合进度：总字节为各文件之和，进行中的文件按已上传字节累加
+                var totalBytes = list.reduce(function (s, f) { return s + (f.size || 0); }, 0) || 1;
+                var loaded = list.map(function () { return 0; });
+                var finished = 0;
+                function paint() {
+                    var sum = 0;
+                    for (var i = 0; i < loaded.length; i++) sum += loaded[i];
+                    paintUploadProgress(sum / totalBytes, finished, list.length);
+                }
+                showUploadProgress(list.length);
+                return Promise.all(list.map(function (f, idx) {
+                    return resolve(f, function (bytes) { loaded[idx] = bytes; paint(); })
+                        .then(function (r) {
+                            finished++;
+                            loaded[idx] = f.size || 0;   // 完成态以文件总大小计，避免进度条卡在 99%
+                            paint();
+                            return r;
+                        });
+                })).then(function (results) {
                     results.forEach(function (r) {
                         vditor.insertValue('\n' + buildContent(r) + '\n');
                     });
+                    paintUploadProgress(1, list.length, list.length);
+                    hideUploadProgress();
                     return { code: 0, data: { errFiles: [], succMap: {} } };
                 }).catch(function (err) {
+                    hideUploadProgress();
                     alert('上传失败：' + (err.message || err));
                     return { code: 1, msg: err.message || '上传失败', data: { errFiles: list.map(function (f) { return f.name; }), succMap: {} } };
                 });

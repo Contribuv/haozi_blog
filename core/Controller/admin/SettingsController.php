@@ -58,6 +58,11 @@ class SettingsController extends BaseController
             'watermark_text' => (string) Settings::get('watermark_text', ''),
             'watermark_position' => (string) Settings::get('watermark_position', 'br'),
             'watermark_size' => (string) Settings::get('watermark_size', 'm'),
+            // 上传白名单与大小上限（显示归一化后的实际生效值）
+            'upload_image_ext' => implode(', ', Upload::imageExt()),
+            'upload_media_ext' => implode(', ', Upload::mediaExt()),
+            'upload_file_ext'  => implode(', ', Upload::fileExt()),
+            'upload_max_size'  => (string) max(1, (int) round(Upload::maxSize() / 1048576)),
             // 历史图刷新状态（后台队列，由本页轮询推进）
             'wm_refresh' => Watermark::state(),
             'otp_enabled' => Otp::configured(),
@@ -111,6 +116,33 @@ class SettingsController extends BaseController
             } else {
                 Flash::success('水印配置已保存（上一轮刷新仍在进行，完成后即按新配置生效）');
             }
+        }
+
+        // ── 上传白名单与大小上限（归一化后入库；留空回退默认白名单） ──
+        $extFields = [
+            Upload::KEY_IMAGE_EXT => ['upload_image_ext', Upload::IMAGE_EXT],
+            Upload::KEY_MEDIA_EXT => ['upload_media_ext', Upload::MEDIA_EXT],
+            Upload::KEY_FILE_EXT  => ['upload_file_ext', Upload::FILE_EXT],
+        ];
+        $droppedAll = [];
+        foreach ($extFields as $storeKey => [$field, $fallback]) {
+            if (!array_key_exists($field, $_POST)) {
+                continue;
+            }
+            $dropped = [];
+            $exts = Upload::normalizeExtInput((string) $_POST[$field], $fallback, $dropped);
+            Settings::set($storeKey, implode(',', $exts));
+            foreach ($dropped as $d) {
+                $droppedAll[$d] = true;
+            }
+        }
+        if (array_key_exists('upload_max_size', $_POST)) {
+            $mb = (int) $_POST['upload_max_size'];
+            // 0 / 空 → 回退默认；上限 512MB 防止误填超大值
+            Settings::set(Upload::KEY_MAX_SIZE, (string) ($mb > 0 ? min($mb, 512) : 0));
+        }
+        if ($droppedAll) {
+            Flash::error('以下扩展名无效或存在安全风险，已忽略：' . implode('、', array_keys($droppedAll)));
         }
 
         // ── 评论功能 / 评论邮件通知开关 ──
@@ -263,8 +295,10 @@ class SettingsController extends BaseController
     private static function saveAvatar(array $file): void
     {
         $ext = '.' . strtolower((string) pathinfo((string) $file['name'], PATHINFO_EXTENSION));
-        if (!in_array($ext, Upload::IMAGE_EXT, true)) {
-            Flash::error('头像格式不支持（仅 png/jpg/jpeg/gif/webp/heic）');
+        $allowed = Upload::imageExt();
+        if (!in_array($ext, $allowed, true)) {
+            $names = implode('/', array_map(static fn (string $e): string => ltrim($e, '.'), $allowed));
+            Flash::error('头像格式不支持（仅 ' . $names . '）');
             return;
         }
         if (in_array($ext, ['.heic', '.heif'], true)) {
@@ -279,29 +313,31 @@ class SettingsController extends BaseController
         }
         $savePath = $dir . '/avatar.jpg';
 
-        $ok = false;
         if (function_exists('imagecreatefromstring')) {
+            // GD 可用时必须能解码，否则视为无效图片（损坏或改名伪装），明确报错而非原样落盘
             $data = @file_get_contents((string) $file['tmp_name']);
             $img = $data !== false ? @imagecreatefromstring($data) : false;
-            if ($img !== false) {
-                $w = imagesx($img);
-                $h = imagesy($img);
-                $s = max(1, min($w, $h));
-                $crop = imagecreatetruecolor($s, $s);
-                imagecopy($crop, $img, 0, 0, (int) (($w - $s) / 2), (int) (($h - $s) / 2), $s, $s);
-                $dst = imagecreatetruecolor(144, 144);
-                imagecopyresampled($dst, $crop, 0, 0, 0, 0, 144, 144, $s, $s);
-                $ok = imagejpeg($dst, $savePath, 85);
-                imagedestroy($img);
-                imagedestroy($crop);
-                imagedestroy($dst);
+            if ($img === false) {
+                Flash::error('头像不是有效的图片（无法解码），请更换文件后重试');
+                return;
             }
-        }
-        if (!$ok) {
-            // GD 不可用或解码失败：保留原文件兜底
-            $ok = move_uploaded_file((string) $file['tmp_name'], $savePath);
-        }
-        if (!$ok) {
+            $w = imagesx($img);
+            $h = imagesy($img);
+            $s = max(1, min($w, $h));
+            $crop = imagecreatetruecolor($s, $s);
+            imagecopy($crop, $img, 0, 0, (int) (($w - $s) / 2), (int) (($h - $s) / 2), $s, $s);
+            $dst = imagecreatetruecolor(144, 144);
+            imagecopyresampled($dst, $crop, 0, 0, 0, 0, 144, 144, $s, $s);
+            $ok = imagejpeg($dst, $savePath, 85);
+            imagedestroy($img);
+            imagedestroy($crop);
+            imagedestroy($dst);
+            if (!$ok) {
+                Flash::error('头像保存失败');
+                return;
+            }
+        } elseif (!move_uploaded_file((string) $file['tmp_name'], $savePath)) {
+            // 仅当环境缺 GD（无法裁剪压缩）时原样保存
             Flash::error('头像保存失败');
             return;
         }

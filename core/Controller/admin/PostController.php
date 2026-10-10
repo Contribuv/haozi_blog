@@ -11,6 +11,7 @@ use Blog\Response;
 use Blog\Service\Auth;
 use Blog\Service\Flash;
 use Blog\Service\Markdown;
+use Blog\Service\Upload;
 
 /**
  * 后台文章管理。
@@ -102,6 +103,7 @@ class PostController extends BaseController
             'post' => null,
             'categories' => $categories,
             'all_tags' => $allTags,
+            'upload_cfg' => self::uploadCfg(),
         ]);
     }
 
@@ -130,6 +132,7 @@ class PostController extends BaseController
             'post' => $post,
             'categories' => Category::load(),
             'all_tags' => Post::allTags(),
+            'upload_cfg' => self::uploadCfg(),
         ]);
     }
 
@@ -165,5 +168,23 @@ class PostController extends BaseController
         $content = (string) Request::post('content', '');
         [$html] = Markdown::renderPost($content);
         Response::json(['html' => $html]);
+    }
+
+    /**
+     * 编辑器上传配置：白名单与大小上限来自后台「上传设置」，保证与后端校验完全一致。
+     * accept 供 Vditor 的文件选择器过滤，image/media/file 供前端按类型分流接口。
+     */
+    private static function uploadCfg(): array
+    {
+        $image = Upload::imageExt();
+        $media = Upload::mediaExt();
+        $file = Upload::fileExt();
+        return [
+            'image' => $image,
+            'media' => $media,
+            'file' => $file,
+            'max' => Upload::maxSize(),
+            'accept' => implode(',', array_merge($image, $media, $file)),
+        ];
     }
 }

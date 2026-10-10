@@ -175,9 +175,14 @@ class Watermark
             }
 
             ob_start();
-            if (strtolower($ext) === '.png') {
+            $extLower = strtolower($ext);
+            if ($extLower === '.png') {
                 imagesavealpha($img, true);
                 imagepng($img, null, 6);
+            } elseif ($extLower === '.webp') {
+                // WebP 必须按原格式输出，否则文件内容(JPEG)与扩展名(.webp)不符
+                imagesavealpha($img, true);
+                imagewebp($img, null, 82);
             } else {
                 imageinterlace($img, true); // 渐进式 JPEG，参照原项目 progressive=True
                 imagejpeg($img, null, 82);

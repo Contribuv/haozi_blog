@@ -11,14 +11,90 @@ use Blog\Model\Settings;
  */
 class Upload
 {
-    public const MAX_SIZE = 20971520; // 20MB
+    public const MAX_SIZE = 20971520; // 20MB（默认值，后台可改）
 
     /** 允许的图片扩展名（对照 ALLOWED_IMAGE_EXT） */
     public const IMAGE_EXT = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp', '.heic', '.heif'];
     /** 允许的音视频扩展名（对照 ALLOWED_MEDIA_EXT） */
-    public const MEDIA_EXT = ['.mp4', '.webm', '.ogg', '.mov', '.avi'];
+    public const MEDIA_EXT = ['.mp4', '.webm', '.ogg', '.mov', '.avi', '.mp3', '.wav', '.m4a', '.aac'];
     /** 允许的附件扩展名（对照 ALLOWED_FILE_EXT） */
     public const FILE_EXT = ['.zip', '.rar', '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt', '.md', '.py', '.js', '.json'];
+
+    /** 后台「上传设置」对应的配置键（留空则回退上面的默认常量） */
+    public const KEY_IMAGE_EXT = 'upload_image_ext';
+    public const KEY_MEDIA_EXT = 'upload_media_ext';
+    public const KEY_FILE_EXT  = 'upload_file_ext';
+    public const KEY_MAX_SIZE  = 'upload_max_size';
+
+    /**
+     * 危险扩展名黑名单：即使后台手工填了也一律拒绝。
+     * uploads 目录在 Nginx 侧已封 .php/.phtml/.phar，但 Apache(.htaccess) 等环境仍需在此兜底，
+     * 避免上传可被解析执行的脚本或改变站点配置的文件。
+     */
+    private const BLOCKED_EXT = [
+        'php', 'php3', 'php4', 'php5', 'php7', 'php8', 'phtml', 'phar', 'pht', 'shtml',
+        'htaccess', 'htpasswd', 'cgi', 'pl', 'asp', 'aspx', 'jsp', 'jspx',
+        'exe', 'dll', 'sh', 'bat', 'cmd', 'com', 'scr', 'msi', 'vbs',
+    ];
+
+    /**
+     * 归一化用户填写的扩展名列表：支持逗号/分号/空格/换行分隔，带点不带点均可。
+     * 非法字符与黑名单扩展名会被丢弃，并通过 $dropped 返回（供后台提示）。
+     */
+    public static function normalizeExtInput(string $raw, array $fallback, ?array &$dropped = null): array
+    {
+        $dropped = [];
+        $out = [];
+        foreach (preg_split('/[\s,;，；、]+/u', $raw) ?: [] as $item) {
+            $e = strtolower(ltrim(trim((string) $item), '.'));
+            if ($e === '' || !preg_match('/^[a-z0-9]{1,10}$/', $e) || in_array($e, self::BLOCKED_EXT, true)) {
+                if ($e !== '') {
+                    $dropped[] = '.' . $e;
+                }
+                continue;
+            }
+            $dot = '.' . $e;
+            if (!in_array($dot, $out, true)) {
+                $out[] = $dot;
+            }
+            if (count($out) >= 60) {
+                break;
+            }
+        }
+        return $out !== [] ? $out : $fallback;
+    }
+
+    /** 配置的图片白名单（空则回退默认常量） */
+    public static function imageExt(): array
+    {
+        return self::cfgExt(self::KEY_IMAGE_EXT, self::IMAGE_EXT);
+    }
+
+    /** 配置的音视频白名单 */
+    public static function mediaExt(): array
+    {
+        return self::cfgExt(self::KEY_MEDIA_EXT, self::MEDIA_EXT);
+    }
+
+    /** 配置的附件白名单 */
+    public static function fileExt(): array
+    {
+        return self::cfgExt(self::KEY_FILE_EXT, self::FILE_EXT);
+    }
+
+    /** 读配置扩展名列表，留空或全部非法时回退默认值 */
+    private static function cfgExt(string $key, array $fallback): array
+    {
+        $raw = trim((string) Settings::get($key, ''));
+        return $raw === '' ? $fallback : self::normalizeExtInput($raw, $fallback);
+    }
+
+    /** 配置的大小上限（字节），未配置回退 MAX_SIZE */
+    public static function maxSize(): int
+    {
+        $mb = (int) Settings::get(self::KEY_MAX_SIZE, 0);
+        return $mb > 0 ? $mb * 1024 * 1024 : self::MAX_SIZE;
+    }
 
     /**
      * 上传根目录（项目根 uploads/）。
@@ -117,8 +193,8 @@ class Upload
         if (empty($file['name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             return ['', '未选择文件或上传失败'];
         }
-        if (($file['size'] ?? 0) > self::MAX_SIZE) {
-            return ['', '文件过大（上限 20MB）'];
+        if (($file['size'] ?? 0) > self::maxSize()) {
+            return ['', '文件过大（上限 ' . self::fmtSize(self::maxSize()) . '）'];
         }
         $ext = strtolower((string) pathinfo($file['name'], PATHINFO_EXTENSION));
         $dot = '.' . $ext;
@@ -139,13 +215,25 @@ class Upload
         }
         $dest = $dir . '/' . $filename;
 
-        if (in_array($dot, self::IMAGE_EXT, true)) {
-            // GD 无 HEIC/HEIF 解码能力，明确报错而非落盘无法展示的文件
+        if (in_array($dot, self::imageExt(), true)) {
+            // 进入图片管线的实际格式：HEIC/HEIF 会先转成 JPEG，其余沿用原扩展名
+            $imgExt = $ext;
             if (in_array($dot, ['.heic', '.heif'], true)) {
-                return ['', '服务器缺少 HEIC 解码支持（PHP GD 无法解码 HEIC/HEIF），请改用 JPG/PNG 上传'];
+                $data = self::heicToJpeg((string) $file['tmp_name']);
+                if ($data === null) {
+                    return ['', '服务器缺少 HEIC/HEIF 解码支持（安装 ImageMagick 或 ffmpeg 后即可上传）'];
+                }
+                $imgExt = 'jpg';
+            } else {
+                $data = @file_get_contents((string) $file['tmp_name']);
+                if ($data === false || $data === '') {
+                    return ['', '文件读取失败，请重新上传'];
+                }
             }
-            $data = @file_get_contents((string) $file['tmp_name']);
-            $opt = $data !== false ? self::optimize($data, $ext) : null;
+            // GD 可用时必须能成功解码，才认定为有效图片（否则是损坏文件或改名伪装，见下方分支）
+            $hasGd = function_exists('imagecreatefromstring');
+            $valid = false;
+            $opt = $hasGd ? self::optimize($data, $imgExt, $valid) : null;
             if ($opt !== null) {
                 [$outData, $newExt] = $opt; // $newExt 形如 '.jpg'
                 if ($newExt !== $dot) {
@@ -174,8 +262,11 @@ class Upload
                 if (@file_put_contents($dest, $outData, LOCK_EX) === false) {
                     return ['', '文件保存失败'];
                 }
+            } elseif ($hasGd && !$valid) {
+                // GD 可用却解码失败：文件不是有效图片（损坏，或改了扩展名伪装成图片），拒绝落盘
+                return ['', '文件不是有效的图片（无法解码），请确认文件未损坏且格式受支持'];
             } elseif (!move_uploaded_file($file['tmp_name'], $dest)) {
-                // 压缩失败（解码失败/缺 GD）回退保存原文件
+                // 无需重编码（GIF 保动画）或环境缺 GD：原样保存
                 return ['', '文件保存失败'];
             }
         } elseif (!move_uploaded_file($file['tmp_name'], $dest)) {
@@ -200,16 +291,76 @@ class Upload
     }
 
     /**
-     * 图片压缩：最长边 1920 时等比缩小并重新编码，返回 [data, 新扩展名]；失败返回 null。
-     * 对照原项目 _optimize_image：png 保 PNG（保留透明通道），其余（jpg/bmp/webp）统一转 JPEG。
+     * HEIC/HEIF → JPEG：PHP GD 不含 HEIF 解码能力，因此按以下顺序借用外部能力，成功返回 JPEG 二进制。
+     * 1) Imagick 扩展（需自带 HEIC 支持）
+     * 2) 外部命令 ffmpeg / ImageMagick(magick) / libheif(heif-convert)
+     * 环境里一个都没有时返回 null，由调用方给出明确提示。
      */
-    private static function optimize(string $data, string $ext): ?array
+    private static function heicToJpeg(string $srcPath): ?string
     {
+        if (class_exists('\Imagick')) {
+            try {
+                $im = new \Imagick($srcPath);
+                $im->setImageFormat('jpeg');
+                $im->setImageCompressionQuality(88);
+                $blob = $im->getImageBlob();
+                $im->clear();
+                if (is_string($blob) && $blob !== '') {
+                    return $blob;
+                }
+            } catch (\Throwable $e) {
+                // 忽略：继续尝试外部命令
+            }
+        }
+
+        if (!function_exists('exec')) {
+            return null;
+        }
+        // 输出文件名必须带 .jpg 扩展：ffmpeg 靠扩展名推断封装格式
+        $out = $srcPath . '.conv.jpg';
+        $templates = [
+            'ffmpeg -y -loglevel error -i %s -frames:v 1 -update 1 -q:v 2 %s',
+            'magick %s %s',
+            'heif-convert %s %s',
+        ];
+        foreach ($templates as $tpl) {
+            @unlink($out);
+            @exec(sprintf($tpl, escapeshellarg($srcPath), escapeshellarg($out)) . ' 2>&1');
+            if (is_file($out) && filesize($out) > 0) {
+                $data = (string) file_get_contents($out);
+                @unlink($out);
+                if ($data !== '') {
+                    return $data;
+                }
+            }
+        }
+        @unlink($out);
+        return null;
+    }
+
+    /**
+     * 图片处理：最长边 1920 时等比缩小，并按格式重新编码。
+     * - png 保 PNG（保留透明通道）
+     * - webp 保 WebP（保留格式与透明，避免被转成静态 JPEG）
+     * - gif 重编码只保留第一帧会丢动画 → 不处理，返回 null 由调用方原样保存
+     * - 其余（jpg/jpeg/bmp）统一转 JPEG
+     * $valid 通过引用输出：文件是否为可解码的有效图片（调用方据此区分「无效图片」与「无需重编码」）。
+     * 返回 [data, 新扩展名]；无需重编码或失败时返回 null。
+     */
+    private static function optimize(string $data, string $ext, bool &$valid): ?array
+    {
+        $valid = false;
         if ($data === '' || !function_exists('imagecreatefromstring')) {
             return null;
         }
         $img = @imagecreatefromstring($data);
         if ($img === false) {
+            return null;
+        }
+        $valid = true;
+        // GIF 交由调用方原样保存，避免重编码丢失动画
+        if ($ext === 'gif') {
+            imagedestroy($img);
             return null;
         }
         try {
@@ -233,6 +384,11 @@ class Upload
                 imagesavealpha($img, true);
                 imagepng($img, null, 6);
                 $newExt = '.png';
+            } elseif ($ext === 'webp') {
+                imagealphablending($img, false);
+                imagesavealpha($img, true);
+                imagewebp($img, null, 82);
+                $newExt = '.webp';
             } else {
                 imageinterlace($img, true);
                 imagejpeg($img, null, 82);

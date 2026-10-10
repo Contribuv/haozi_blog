@@ -823,8 +823,64 @@ button.tag-chip:hover { border-color: var(--accent); color: var(--accent); backg
   .post-edit-form .edit-sidebar { align-self: start; max-height: 100%; }
 }
 
+/* 上传进度浮窗：屏幕居中遮罩 + 卡片式面板；上传完成后由 JS 移除 hidden 收起 */
+.upload-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5);
+  background: var(--overlay);
+  animation: uploadFadeIn .18s ease;
+}
+.upload-mask[hidden] { display: none; }
+@keyframes uploadFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.upload-panel {
+  width: min(340px, 100%);
+  padding: var(--sp-5);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+}
+.upload-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-3);
+}
+.upload-panel-title { font-size: var(--fz-md); color: var(--text); }
+.upload-panel-count { font-size: var(--fz-xs); color: var(--text-tertiary); font-variant-numeric: tabular-nums; }
+.upload-bar {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--bg-surface-2);
+  overflow: hidden;
+}
+.upload-bar-fill {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width .18s ease;
+}
+.upload-panel-pct {
+  margin-top: var(--sp-2);
+  text-align: right;
+  font-size: var(--fz-xs);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
 /* ─────────── 20. settings 专属组件 ─────────── */
-.avatar-edit { display: flex; align-items: center; gap: var(--sp-4); flex-wrap: wrap; }
+.avatar-edit { display: flex; align-items: center; gap: var(--sp-4); }
 .avatar-preview {
   display: flex; align-items: center; justify-content: center;
   width: 72px; height: 72px; flex: none;
@@ -834,9 +890,9 @@ button.tag-chip:hover { border-color: var(--accent); color: var(--accent); backg
   overflow: hidden;
 }
 .avatar-preview img { width: 100%; height: 100%; object-fit: cover; }
-.avatar-preview-empty { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--text-tertiary); }
-.avatar-hint { font-size: 10px; }
-.avatar-upload { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.avatar-preview-empty { display: flex; color: var(--text-tertiary); }
+.avatar-upload { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.avatar-upload .btn { min-width: 88px; justify-content: center; }
 /* minmax(0,…)：防止 select 最长选项的 min-content 宽把窄列撑出卡片（SMTP 端口列溢出修复） */
 .smtp-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 0 var(--sp-4); }
 .nav-toggle-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: var(--sp-2) var(--sp-4); }
@@ -1129,7 +1185,7 @@ html[data-theme-mode="light"] .login-theme-toggle .icon-moon { display: none; }
 @media (min-width: 1024px) { .topbar-brand { display: none; } }
 @media (max-width: 575.98px) { .topbar-home { display: none; } }
 
-/* ≥1024：设置页流式双栏（CSS columns 瀑布流：卡片按内容高度依次填列，两列底部均衡；
+/* ≥1024：设置页流式双栏（CSS columns 瀑布流：卡片按内容高度依次填列；
    form-actions 跨全列通栏，避免被折进某一列内部） */
 @media (min-width: 1024px) {
   .settings-form {
@@ -1218,6 +1274,10 @@ html[data-theme-mode="light"] .login-theme-toggle .icon-moon { display: none; }
   .edit-layout { grid-template-columns: 1fr; gap: var(--sp-4); }
   .edit-sidebar { position: static; max-height: none; overflow: visible; }
   .edit-main .form-group:has(#editor) { min-height: 60vh; }
+  /* Vditor 置顶工具栏避让后台顶栏：移动端整页滚动时，工具栏(vditor 默认 top:0)与顶栏同锚
+     top:0，而顶栏 z-index 更高，会盖住工具栏首行并使其无法点击。抬高到顶栏下沿即可。
+     仅移动端生效——桌面端页面本身不滚动，sticky 不触发，行为不变。 */
+  .admin-content .vditor-toolbar--pin { top: var(--topbar-h); }
   .smtp-row { grid-template-columns: 1fr; }
   .nav-toggle-grid { grid-template-columns: 1fr; }
   .theme-grid, .theme-grid-lg { grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); }
