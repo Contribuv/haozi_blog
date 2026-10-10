@@ -36,7 +36,11 @@ class OrphanController extends BaseController
     public function clean(): void
     {
         Auth::requireAdmin();
+        // 只勾选一个文件时，同名字段只有一个，PHP 给的是字符串而非数组，需归一化
         $selected = $_POST['path'] ?? [];
+        if (!is_array($selected)) {
+            $selected = [$selected];
+        }
         $isAjax = ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'XMLHttpRequest';
 
         $deleted = 0;

@@ -445,7 +445,19 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.2.1**
+当前版本：**2.2.2**
+
+### 从 2.2.1 升级到 2.2.2
+
+两处修复：
+
+1. **文件清理（/admin/orphans）删不掉单个文件**：表单字段 `path` 只有一个值时 PHP 给的是字符串而非数组，`is_array()` 判断失败导致一个都删不掉、每行都标红；现已归一化为数组。此前只有「一次勾选多个文件」才删得动，这也是该页长期存在的隐患。
+2. **友链排序次序错乱（/admin/links）**：列表原按 `sort_order ASC, created_at DESC` 排序，当多条链接的排序值相同（例如都为 0）时，后添加的反而排到前面。现改为 `sort_order ASC, id ASC`，排序值为 0 的「项目本身」必定第一条。该排序全站共用，前台首页友链、`/links` 页面与页脚统计同步生效。
+
+> 本版无数据库结构与 nginx 配置变更，后台一键升级即可。
+
+<details>
+<summary><b>历史版本日志（点击展开）</b></summary>
 
 ### 从 2.2.0 升级到 2.2.1
 
@@ -454,9 +466,6 @@ rm -rf storage/cache/templates/*
 1. **「打开 Releases 页面」指向了 Python 版仓库**：升级页在检测更新失败时用的兜底链接一直是原 Flask 版 `Contribuv/infowe_blog`，点开是另一个项目；现改为 PHP 版仓库 `Contribuv/haozi_blog`。当 GitHub 检测正常时，该链接本就取接口返回的真实地址，不受影响。
 
 > 本版仅此一处前端链接修复，无其它变更。
-
-<details>
-<summary><b>历史版本日志（点击展开）</b></summary>
 
 ### 从 2.1.2 升级到 2.2.0
 

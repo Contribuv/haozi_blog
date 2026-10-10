@@ -15,7 +15,7 @@ use Blog\Request;
 class Context
 {
     /** 程序版本号（PHP 版独立版本线） */
-    public const VERSION = '2.2.1';
+    public const VERSION = '2.2.2';
 
     /** 可开关的导航项：(配置 key 后缀, 显示名, 链接)；首页与写作入口为固定项 */
     public const NAV_PAGES = [

@@ -13,11 +13,11 @@ class Link extends Model
     {
         if ($status !== null) {
             $rows = self::rows(
-                'SELECT * FROM links WHERE status = ? ORDER BY sort_order ASC, created_at DESC',
+                'SELECT * FROM links WHERE status = ? ORDER BY sort_order ASC, id ASC',
                 [$status]
             );
         } else {
-            $rows = self::rows('SELECT * FROM links ORDER BY sort_order ASC, created_at DESC');
+            $rows = self::rows('SELECT * FROM links ORDER BY sort_order ASC, id ASC');
         }
         foreach ($rows as &$r) {
             $r['id'] = (int) $r['id'];
