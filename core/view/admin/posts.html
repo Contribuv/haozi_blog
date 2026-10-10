@@ -53,7 +53,7 @@
             {% for post in posts %}
             <tr>
                 <td class="col-check" data-label="选择">
-                    <input type="checkbox" class="row-check" name="post_ids" value="{{ post.id }}" form="bulkPosts" aria-label="选择文章 {{ post.id }}">
+                    <input type="checkbox" class="row-check" name="post_ids[]" value="{{ post.id }}" form="bulkPosts" aria-label="选择文章 {{ post.id }}">
                 </td>
                 <td class="main-td" data-label="标题">
                     <a href="{{ url_for('admin_post_edit', post_id=post.id) }}" class="post-link">

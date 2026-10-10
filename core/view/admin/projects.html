@@ -44,7 +44,7 @@
             {% for p in projects %}
             <tr>
                 <td class="col-check" data-label="选择">
-                    <input type="checkbox" class="row-check" name="project_ids" value="{{ p.id }}" form="bulkProjects" aria-label="选择项目 {{ p.id }}">
+                    <input type="checkbox" class="row-check" name="project_ids[]" value="{{ p.id }}" form="bulkProjects" aria-label="选择项目 {{ p.id }}">
                 </td>
                 <td class="sort-cell col-opt col-num" data-label="排序">{{ p.sort_order }}</td>
                 <td class="main-td" data-label="项目名">

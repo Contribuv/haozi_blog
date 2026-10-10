@@ -38,7 +38,7 @@
                 {% for c in comments %}
                 <tr{% if c.status == 'pending' %} class="row-pending"{% endif %}>
                     <td class="col-check" data-label="选择">
-                        <input type="checkbox" class="row-check" name="comment_ids" value="{{ c.id }}" form="bulkForm" aria-label="选择评论 {{ c.id }}">
+                        <input type="checkbox" class="row-check" name="comment_ids[]" value="{{ c.id }}" form="bulkForm" aria-label="选择评论 {{ c.id }}">
                     </td>
                     <td data-label="状态">
                         {% if c.status == 'pending' %}<span class="badge badge-warning">待审核</span>

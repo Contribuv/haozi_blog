@@ -214,13 +214,14 @@ class Watermark
         }
         $candidates = array_merge([PHP_BLOG_ROOT . '/fonts/wqy-microhei.ttc'], self::FONT_CANDIDATES);
         foreach ($candidates as $p) {
-            if (is_file($p) && self::fontUsable($p)) {
+            // 候选含系统字体目录，open_basedir 下同样会触发 E_WARNING，探测语义用 @ 抑制
+            if (@is_file($p) && self::fontUsable($p)) {
                 return self::$fontPath = $p;
             }
         }
         $found = [];
         foreach (self::FONT_SCAN_DIRS as $d) {
-            if (!is_dir($d)) {
+            if (!@is_dir($d)) {
                 continue;
             }
             $it = new \RecursiveIteratorIterator(

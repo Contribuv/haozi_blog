@@ -36,7 +36,7 @@
             {% for it in items %}
             <tr>
                 <td class="col-check" data-label="选择">
-                    <input type="checkbox" class="row-check" name="timeline_ids" value="{{ it.id }}" form="bulkTimeline" aria-label="选择历程 {{ it.id }}">
+                    <input type="checkbox" class="row-check" name="timeline_ids[]" value="{{ it.id }}" form="bulkTimeline" aria-label="选择历程 {{ it.id }}">
                 </td>
                 <td class="col-num" data-label="排序">{{ it.sort_order }}</td>
                 <td data-label="日期"><strong>{{ it.date }}</strong></td>

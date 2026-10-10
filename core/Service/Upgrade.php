@@ -20,6 +20,12 @@ class Upgrade
     public const LOCK_TTL = 600;
     /** 版本检测缓存有效期（秒） */
     public const CACHE_TTL = 600;
+    /** 平台失败后的熔断窗口（秒）：窗口内直接跳过该平台，不再干等连接超时 */
+    private const BREAK_SECONDS = 300;
+    /** 双平台可用性探测有效期（秒）：过期则由后台异步刷新 */
+    private const PROBE_TTL = 600;
+    /** 单次 API 探测超时（秒）：GitHub 不通时能快速失败并切换 */
+    private const API_TIMEOUT = 3;
 
     /**
      * 升级时整棵跳过的顶层目录：用户数据 / 运行时数据 / 本地扩展 / 版本库。
@@ -63,6 +69,123 @@ class Upgrade
     private static function cacheFile(): string
     {
         return PHP_BLOG_ROOT . '/data/upgrade_cache.json';
+    }
+
+    /** 双平台健康状态文件（data/upgrade_sources.json） */
+    private static function sourcesFile(): string
+    {
+        return PHP_BLOG_ROOT . '/data/upgrade_sources.json';
+    }
+
+    /**
+     * 双平台可用性状态：['github' => ['ok'=>bool,'checked'=>int,'fails'=>int], 'gitee' => 同]。
+     * ok=false 且仍在 BREAK_SECONDS 窗口内即视为「熔断」，调用时直接跳过，
+     * 避免 GitHub 不通时每个请求都干等一次连接超时（这正是卡死 PHP worker 的根因）。
+     */
+    public static function sourceState(): array
+    {
+        $out = [
+            'github' => ['ok' => true, 'checked' => 0, 'fails' => 0],
+            'gitee' => ['ok' => true, 'checked' => 0, 'fails' => 0],
+        ];
+        $file = self::sourcesFile();
+        if (is_file($file)) {
+            $data = json_decode((string) file_get_contents($file), true);
+            if (is_array($data)) {
+                foreach (array_keys($out) as $k) {
+                    if (isset($data[$k]) && is_array($data[$k])) {
+                        $out[$k] = [
+                            'ok' => (bool) ($data[$k]['ok'] ?? true),
+                            'checked' => (int) ($data[$k]['checked'] ?? 0),
+                            'fails' => (int) ($data[$k]['fails'] ?? 0),
+                        ];
+                    }
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** 记录一次平台调用结果（成功即清零失败计数） */
+    public static function markSource(string $src, bool $ok): void
+    {
+        $state = self::sourceState();
+        if (!isset($state[$src])) {
+            return;
+        }
+        $state[$src]['ok'] = $ok;
+        $state[$src]['checked'] = time();
+        $state[$src]['fails'] = $ok ? 0 : ((int) $state[$src]['fails'] + 1);
+        $file = self::sourcesFile();
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        @file_put_contents($file . '.tmp', json_encode($state, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        @rename($file . '.tmp', $file);
+    }
+
+    /** 平台是否处于熔断窗口内 */
+    private static function broken(string $src, array $state): bool
+    {
+        $s = $state[$src] ?? null;
+        return is_array($s) && (int) $s['fails'] > 0
+            && (time() - (int) $s['checked']) < self::BREAK_SECONDS;
+    }
+
+    /** 平台尝试顺序：健康的在前、熔断的在后；$ignoreBreak=true 时按固定顺序（手动重新检测用） */
+    private static function order(bool $ignoreBreak = false): array
+    {
+        $all = ['github', 'gitee'];
+        if ($ignoreBreak) {
+            return $all;
+        }
+        $state = self::sourceState();
+        $healthy = [];
+        $broken = [];
+        foreach ($all as $src) {
+            if (self::broken($src, $state)) {
+                $broken[] = $src;
+            } else {
+                $healthy[] = $src;
+            }
+        }
+        return array_merge($healthy, $broken);
+    }
+
+    /** 状态是否过期（需要后台重新探测） */
+    public static function sourcesStale(): bool
+    {
+        $s = self::sourceState();
+        $oldest = min((int) $s['github']['checked'], (int) $s['gitee']['checked']);
+        return $oldest === 0 || (time() - $oldest) > self::PROBE_TTL;
+    }
+
+    /** 探测两个平台可用性并落盘（短超时）；供后台在响应发出后调用 */
+    public static function probeSources(): array
+    {
+        foreach (['github', 'gitee'] as $src) {
+            $info = $src === 'github'
+                ? self::githubLatest(self::githubRepo())
+                : self::giteeLatest(self::giteeRepo());
+            self::markSource($src, $info !== null);
+            if ($info !== null) {
+                self::saveCache(time(), $info);
+            }
+        }
+        return self::sourceState();
+    }
+
+    /** 挂一个「响应结束后再探测」的钩子，探测不会占用用户的等待时间 */
+    public static function scheduleProbe(): void
+    {
+        register_shutdown_function(static function (): void {
+            if (function_exists('fastcgi_finish_request')) {
+                @fastcgi_finish_request();
+            }
+            @set_time_limit(30);
+            self::probeSources();
+        });
     }
 
     /** 升级锁文件 */
@@ -123,15 +246,17 @@ class Upgrade
         if (!$force && $cache['info'] !== null && $cache['t'] > 0 && (time() - $cache['t']) < self::CACHE_TTL) {
             return $cache['info'];
         }
+        $gitee = self::giteeRepo();
         $info = null;
-        $gh = self::githubLatest(self::githubRepo());
-        if ($gh !== null) {
-            $info = $gh;
-        } else {
-            // GitHub 打不开 / 超时 / 限流 / 返回内容非法 → 回退 Gitee 镜像
-            $gitee = self::giteeRepo();
-            if ($gitee !== '') {
-                $info = self::giteeLatest($gitee);
+        // 按平台健康状态决定尝试顺序：熔断中的平台排到最后，命中即止不再试另一个
+        foreach (self::order($force) as $src) {
+            if ($src === 'gitee' && $gitee === '') {
+                continue;
+            }
+            $info = $src === 'github' ? self::githubLatest(self::githubRepo()) : self::giteeLatest($gitee);
+            self::markSource($src, $info !== null);
+            if ($info !== null) {
+                break;
             }
         }
         if ($info !== null) {
@@ -146,7 +271,8 @@ class Upgrade
         try {
             $data = Http::getJson(
                 'https://api.github.com/repos/' . $repo . '/releases/latest',
-                ['Accept: application/vnd.github+json', 'User-Agent: infowe-Blog-updater']
+                ['Accept: application/vnd.github+json', 'User-Agent: infowe-Blog-updater'],
+                self::API_TIMEOUT
             );
         } catch (\Throwable) {
             return null;
@@ -174,7 +300,8 @@ class Upgrade
         try {
             $data = Http::getJson(
                 'https://gitee.com/api/v5/repos/' . $repo . '/releases/latest',
-                ['User-Agent: infowe-Blog-updater']
+                ['User-Agent: infowe-Blog-updater'],
+                self::API_TIMEOUT
             );
         } catch (\Throwable) {
             return null;
@@ -246,9 +373,10 @@ class Upgrade
             Backup::copyUploads($bakDir . '/uploads');
 
             // 2. 下载源码压缩包（直连优先 → 加速镜像 → Gitee 归档包）
+            //    Gitee 的直连归档路径是 /repository/archive/{ref}.zip，写成 /archive/{ref}.zip 会 404
             $zipUrl = 'https://github.com/' . self::githubRepo() . '/archive/refs/tags/v' . $tag . '.zip';
             $alt = self::giteeRepo() !== ''
-                ? ['https://gitee.com/' . self::giteeRepo() . '/archive/v' . $tag . '.zip']
+                ? ['https://gitee.com/' . self::giteeRepo() . '/repository/archive/v' . $tag . '.zip']
                 : [];
             $zipPath = self::download($zipUrl, $tmp . '/release.zip', $alt);
 
@@ -302,20 +430,56 @@ class Upgrade
     /** 尝试直连 → 镜像 → 备用源，全部失败抛最后一个错误 */
     private static function download(string $url, string $dest, array $altUrls = []): string
     {
-        $attempts = array_merge([$url], array_map(static fn (string $m): string => $m . $url, self::mirrors()), $altUrls);
+        $githubChain = array_merge([$url], array_map(static fn (string $m): string => $m . $url, self::mirrors()));
+        // GitHub 处于熔断窗口时，把备用源（Gitee）提到最前，省掉十几秒的连接超时空等
+        $attempts = self::broken('github', self::sourceState())
+            ? array_merge($altUrls, $githubChain)
+            : array_merge($githubChain, $altUrls);
         $lastErr = null;
         foreach ($attempts as $u) {
+            $isDirectGithub = ($u === $url);
+            $isGitee = str_contains($u, 'gitee.com');
             try {
                 self::streamDownload($u, $dest);
+                // Gitee 在「需要打包」时会返回 HTML 中间页（HTTP 200），必须确认拿到的是真 zip，
+                // 否则会把中间页当成功，后续解压才报错、也不会再尝试下一个源
+                if (!self::looksLikeZip($dest)) {
+                    throw new \RuntimeException('下载内容不是 zip 压缩包（可能是中间页或错误页）');
+                }
+                if ($isDirectGithub) {
+                    self::markSource('github', true);
+                }
+                if ($isGitee) {
+                    self::markSource('gitee', true);
+                }
                 return $dest;
             } catch (\Throwable $e) {
                 $lastErr = $e;
+                // 只按「直连」结果熔断：加速镜像失败不代表该平台本身不可用
+                if ($isDirectGithub) {
+                    self::markSource('github', false);
+                }
+                if ($isGitee) {
+                    self::markSource('gitee', false);
+                }
                 if (is_file($dest)) {
                     @unlink($dest);
                 }
             }
         }
         throw $lastErr ?? new \RuntimeException('下载失败');
+    }
+
+    /** 本地文件是否为 zip（校验文件头魔数） */
+    private static function looksLikeZip(string $path): bool
+    {
+        $fh = @fopen($path, 'rb');
+        if ($fh === false) {
+            return false;
+        }
+        $magic = (string) fread($fh, 4);
+        fclose($fh);
+        return $magic === "PK\x03\x04" || $magic === "PK\x05\x06" || $magic === "PK\x07\x08";
     }
 
     /** 流式下载到文件，超过大小上限即中止 */
@@ -336,8 +500,10 @@ class Upgrade
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
             CURLOPT_TIMEOUT => 60,
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_USERAGENT => 'infowe-Blog-updater',
+            CURLOPT_CONNECTTIMEOUT => 5,
+            // Gitee 对浏览器类 UA 会返回「正在打包」的中间页（HTTP 200 + HTML），
+            // 只有 curl 类 UA 才会直接给出 zip 包，故这里沿用 curl 风格 UA
+            CURLOPT_USERAGENT => 'curl/8.21.0',
             CURLOPT_NOPROGRESS => false,
             CURLOPT_PROGRESSFUNCTION => static function ($res, $dlTotal, $dlNow): int {
                 return $dlNow > self::MAX_BYTES ? 1 : 0; // 返回非 0 中止传输

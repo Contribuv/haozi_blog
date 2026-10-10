@@ -21,6 +21,10 @@ class UpgradeController extends BaseController
     public function index(): void
     {
         Auth::requireAdmin();
+        // 平台可用性状态过期时，挂一个「响应发出后再探测」的钩子，用户不必等探测
+        if (Upgrade::sourcesStale()) {
+            Upgrade::scheduleProbe();
+        }
         $this->render('admin/upgrade.html', ['current_version' => Context::VERSION]);
     }
 
@@ -60,6 +64,7 @@ class UpgradeController extends BaseController
         $info = Upgrade::checkLatestVersion($force);
         $upgradable = $info !== null && $curVer !== null && self::cmp($info['version'], $curVer) > 0;
         $body = $info !== null ? (string) $info['body'] : '';
+        $state = Upgrade::sourceState();
 
         Response::json([
             'ok' => $info !== null,
@@ -72,6 +77,11 @@ class UpgradeController extends BaseController
             'body_html' => $body !== '' ? Upgrade::bodyHtml($body) : '',
             'release_url' => $info !== null ? (string) $info['html_url'] : Upgrade::RELEASE_URL,
             'source' => $info !== null ? (string) ($info['source'] ?? 'github') : '',
+            // 双平台可用性（含上次探测时间），供页面展示与判断会走哪个源
+            'sources' => [
+                ['key' => 'github', 'label' => 'GitHub', 'ok' => (bool) $state['github']['ok'], 'checked' => (int) $state['github']['checked']],
+                ['key' => 'gitee', 'label' => 'Gitee', 'ok' => (bool) $state['gitee']['ok'], 'checked' => (int) $state['gitee']['checked']],
+            ],
         ]);
     }
 

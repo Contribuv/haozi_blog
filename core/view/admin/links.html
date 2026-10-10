@@ -40,7 +40,7 @@
             {% for l in pending %}
             <tr>
                 <td class="col-check" data-label="选择">
-                    <input type="checkbox" class="row-check" name="link_ids" value="{{ l.id }}" form="bulk-form-pending" aria-label="选择链接 {{ l.id }}">
+                    <input type="checkbox" class="row-check" name="link_ids[]" value="{{ l.id }}" form="bulk-form-pending" aria-label="选择链接 {{ l.id }}">
                 </td>
                 <td class="main-td" data-label="名称"><strong>{{ l.name }}</strong></td>
                 <td data-label="头像"><span class="link-avatar-mini">{% if l.avatar %}<img src="{{ l.avatar }}" alt="{{ l.name }}">{% else %}{{ l.name[0] }}{% endif %}</span></td>
@@ -96,7 +96,7 @@
             {% for l in links %}
             <tr>
                 <td class="col-check" data-label="选择">
-                    <input type="checkbox" class="row-check" name="link_ids" value="{{ l.id }}" form="bulk-form-links" aria-label="选择链接 {{ l.id }}">
+                    <input type="checkbox" class="row-check" name="link_ids[]" value="{{ l.id }}" form="bulk-form-links" aria-label="选择链接 {{ l.id }}">
                 </td>
                 <td data-label="排序">{{ l.sort_order }}</td>
                 <td class="main-td" data-label="名称"><strong>{{ l.name }}</strong></td>

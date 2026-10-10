@@ -37,7 +37,7 @@
             {% for c in categories %}
             <tr>
                 <td class="col-check" data-label="选择">
-                    <input type="checkbox" class="row-check" name="cat_ids" value="{{ c.id }}" form="bulkCats" aria-label="选择分类 {{ c.id }}">
+                    <input type="checkbox" class="row-check" name="cat_ids[]" value="{{ c.id }}" form="bulkCats" aria-label="选择分类 {{ c.id }}">
                 </td>
                 <td class="col-num" data-label="ID">{{ c.id }}</td>
                 <td class="main-td" data-label="分类名称"><strong>{{ c.name }}</strong></td>

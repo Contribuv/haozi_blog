@@ -27,7 +27,10 @@ class Http
             (string) ini_get('openssl.cafile'),
             CORE_PATH . '/lib/cacert.pem',
         ] as $p) {
-            if ($p !== '' && is_file($p)) {
+            // ini 里的路径常指向 /etc/pki/... 这类系统目录，在 open_basedir 下 is_file()
+            // 会抛 E_WARNING（被 display_errors 输出到响应体、污染 JSON），这里只需“探测”，
+            // 用 @ 抑制；不可读时返回 false，自动回退下一个候选。
+            if ($p !== '' && @is_file($p)) {
                 self::$cacert = $p;
                 break;
             }

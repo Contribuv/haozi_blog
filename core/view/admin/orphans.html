@@ -298,7 +298,9 @@
         deleteBtn.classList.add('btn-loading');
 
         var body = new URLSearchParams();
-        picked.forEach(function (row) { body.append('path', row.dataset.rel); });
+        // 必须用 path[]：PHP 对同名的 path=a&path=b 只保留最后一个值（标量覆盖），
+        // 只有 path[]=a&path[]=b 才会解析成数组，否则「批量删除」只会删掉最后一条
+        picked.forEach(function (row) { body.append('path[]', row.dataset.rel); });
 
         fetch(form.action || window.location.pathname, {
             method: 'POST',
