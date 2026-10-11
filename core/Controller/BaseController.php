@@ -38,7 +38,8 @@ abstract class BaseController
             return ['upgrade_check' => null, 'upgrade_available' => false];
         }
         $cur = Upgrade::parseVersion(Context::VERSION);
-        $latest = Upgrade::parseVersion((string) ($info['version'] ?? ''));
+        // 缓存里的 version 已由 checkLatestVersion 解析为 [int,int,int]，直接用，勿再 (string) 转换
+        $latest = is_array($info['version'] ?? null) ? $info['version'] : null;
         $available = $cur !== null && $latest !== null
             && version_compare(Upgrade::versionString($latest), Upgrade::versionString($cur), '>');
         return ['upgrade_check' => $info, 'upgrade_available' => $available];
