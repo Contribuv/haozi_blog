@@ -21,8 +21,19 @@ location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { re
 location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
 location ~ ^/themes/.+\.(html|json)$        { return 404; }
-location ~ ^/uploads/(.*/)?\.               { return 404; }
-location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
+
+# 上传目录：防盗链（^~ 前缀匹配优先于下方所有正则，/uploads/ 统一走这里）
+location ^~ /uploads/ {
+    # 合法来源：无 Referer（RSS 阅读器 / 直接打开 / 聊天工具预览）与本站（含泛子域）；
+    # Referer 明确为外站的盗链请求一律 403，不再消耗服务器带宽
+    valid_referers none blocked server_names *.infowe.site;
+    if ($invalid_referer) { return 403; }
+    # 隐藏文件与可执行脚本（原全局规则移入此处）
+    location ~ ^/uploads/(.*/)?\.               { return 404; }
+    location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
+    expires 30d;
+    access_log off;
+}
 
 # 伪静态：非真实文件 / 目录交给前端控制器
 location / { try_files $uri $uri/ /index.php?$query_string; }

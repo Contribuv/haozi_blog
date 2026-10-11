@@ -199,8 +199,16 @@ location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { re
 location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
 location ~ ^/themes/.+\.(html|json)$        { return 404; }
-location ~ ^/uploads/(.*/)?\.               { return 404; }
-location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
+
+# 上传目录：防盗链（^~ 优先于下方正则，/uploads/ 统一走这里；泛子域按实际域名改）
+location ^~ /uploads/ {
+    valid_referers none blocked server_names *.infowe.site;
+    if ($invalid_referer) { return 403; }
+    location ~ ^/uploads/(.*/)?\.               { return 404; }
+    location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
+    expires 30d;
+    access_log off;
+}
 
 # 伪静态：非真实文件 / 目录交给前端控制器
 location / { try_files $uri $uri/ /index.php?$query_string; }
@@ -259,8 +267,16 @@ server {
     location ~ /\.            { return 404; }
     location ^~ /.well-known/ { allow all; }
     location ~ ^/themes/.+\.(html|json)$        { return 404; }
-    location ~ ^/uploads/(.*/)?\.               { return 404; }
-    location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
+
+    # 上传目录：防盗链（^~ 优先于下方正则，/uploads/ 统一走这里；泛子域按实际域名改）
+    location ^~ /uploads/ {
+        valid_referers none blocked server_names *.infowe.site;
+        if ($invalid_referer) { return 403; }
+        location ~ ^/uploads/(.*/)?\.               { return 404; }
+        location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
+        expires 30d;
+        access_log off;
+    }
 
     location / { try_files $uri $uri/ /index.php?$query_string; }
 
