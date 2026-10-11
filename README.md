@@ -463,7 +463,18 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.3.2**
+当前版本：**2.4.0**
+
+### 从 2.3.2 升级到 2.4.0
+
+本版为附件链接增加**按扩展名的专属前缀图标**，编辑器与前台文章统一显示。
+
+1. **19 枚专属 svg 图标**：`static/icons/` 新增 zip / rar / 7z / tar / gz / bz2 / pdf / doc / docx / xls / xlsx / ppt / pptx / csv / txt / md / py / js / json，风格与既有 `file` 线性图标一致（文件轮廓 + 扩展名文字）。
+2. **前台正文**：`markdown-body.css` 由原先的 3 组类别映射改为逐扩展名一一对应，`::before` 伪元素以 `mask` 渲染，图标随链接色（`currentColor`）。
+3. **编辑器**：`admin.css` 新增 `.vditor-reset` 同款规则，Vditor SV 分屏预览右栏同样显示图标（svg 用绝对路径）。
+4. **移除旧样式**：主题 `theme.css` 中附件链接的后置 `⬇` 标记删除，与「图标 + 文件名」格式统一。
+
+> 显示效果即「图标 + 文件名」（如 `📄 Test.zip`）。取舍：Vditor 的 IR 即时渲染模式（仅移动端）里链接存于 `span[data-type=a]` 的文本节点，CSS 属性选择器无从匹配，暂不显示图标。本版无数据库结构与 nginx 配置变更；`markdown-body.css` 走版本号缓存，升级后自动刷新。
 
 ### 从 2.3.1 升级到 2.3.2
 

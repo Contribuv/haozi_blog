@@ -1590,3 +1590,45 @@ body.bulk-on #orphanTable tbody tr { cursor: pointer; }
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+
+/* ==========================================================
+   28. 编辑器附件图标：Vditor 预览区按扩展名前置图标
+   —— 与前台 markdown-body.css 一致，选择器换成 .vditor-reset；
+      svg 用绝对路径（后台路由层级深，相对路径会错）。
+      取舍：仅在 SV 分屏预览右栏生效；IR 即时渲染模式下链接存于
+      span(data-type=a) + 文本节点，属性选择器无从匹配，不显示图标。
+   ========================================================== */
+.vditor-reset a:is(
+  [href$=".zip"], [href$=".rar"], [href$=".7z"], [href$=".tar"], [href$=".gz"], [href$=".bz2"],
+  [href$=".pdf"], [href$=".doc"], [href$=".docx"], [href$=".xls"], [href$=".xlsx"], [href$=".ppt"], [href$=".pptx"], [href$=".csv"],
+  [href$=".txt"], [href$=".md"], [href$=".py"], [href$=".js"], [href$=".json"]
+)::before {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: .34em;
+  vertical-align: -.14em;
+  background-color: currentColor;
+  -webkit-mask: var(--doc-icon) center / contain no-repeat;
+  mask: var(--doc-icon) center / contain no-repeat;
+}
+.vditor-reset a[href$=".zip"]  { --doc-icon: url(/static/icons/zip.svg); }
+.vditor-reset a[href$=".rar"]  { --doc-icon: url(/static/icons/rar.svg); }
+.vditor-reset a[href$=".7z"]   { --doc-icon: url(/static/icons/7z.svg); }
+.vditor-reset a[href$=".tar"]  { --doc-icon: url(/static/icons/tar.svg); }
+.vditor-reset a[href$=".gz"]   { --doc-icon: url(/static/icons/gz.svg); }
+.vditor-reset a[href$=".bz2"]  { --doc-icon: url(/static/icons/bz2.svg); }
+.vditor-reset a[href$=".pdf"]  { --doc-icon: url(/static/icons/pdf.svg); }
+.vditor-reset a[href$=".doc"]  { --doc-icon: url(/static/icons/doc.svg); }
+.vditor-reset a[href$=".docx"] { --doc-icon: url(/static/icons/docx.svg); }
+.vditor-reset a[href$=".xls"]  { --doc-icon: url(/static/icons/xls.svg); }
+.vditor-reset a[href$=".xlsx"] { --doc-icon: url(/static/icons/xlsx.svg); }
+.vditor-reset a[href$=".ppt"]  { --doc-icon: url(/static/icons/ppt.svg); }
+.vditor-reset a[href$=".pptx"] { --doc-icon: url(/static/icons/pptx.svg); }
+.vditor-reset a[href$=".csv"]  { --doc-icon: url(/static/icons/csv.svg); }
+.vditor-reset a[href$=".txt"]  { --doc-icon: url(/static/icons/txt.svg); }
+.vditor-reset a[href$=".md"]   { --doc-icon: url(/static/icons/md.svg); }
+.vditor-reset a[href$=".py"]   { --doc-icon: url(/static/icons/py.svg); }
+.vditor-reset a[href$=".js"]   { --doc-icon: url(/static/icons/js.svg); }
+.vditor-reset a[href$=".json"] { --doc-icon: url(/static/icons/json.svg); }

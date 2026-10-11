@@ -732,17 +732,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   position: absolute; inset: 0; width: 100%; height: 100%; border: 0;
 }
 
-/* 附件链接：常见附件扩展名加下载标记 */
-.tech-post-body a[href$=".zip"]::after, .tech-post-body a[href$=".rar"]::after,
-.tech-post-body a[href$=".pdf"]::after, .tech-post-body a[href$=".doc"]::after,
-.tech-post-body a[href$=".docx"]::after, .tech-post-body a[href$=".xls"]::after,
-.tech-post-body a[href$=".xlsx"]::after, .tech-post-body a[href$=".ppt"]::after,
-.tech-post-body a[href$=".pptx"]::after, .tech-post-body a[href$=".txt"]::after,
-.tech-post-body a[href$=".md"]::after, .tech-post-body a[href$=".py"]::after,
-.tech-post-body a[href$=".js"]::after, .tech-post-body a[href$=".json"]::after {
-  content: " ⬇";
-  font-size: 12px;
-}
+/* 附件链接图标改由 markdown-body.css 按扩展名前置（见 --doc-icon） */
 
 /* ── 代码高亮（GitHub 风格，深浅色变量） ── */
 .hljs { color: var(--text); background: transparent; }

@@ -342,12 +342,22 @@
   -webkit-mask: var(--doc-icon) center / contain no-repeat;
   mask: var(--doc-icon) center / contain no-repeat;
 }
-.markdown-body a:is([href$=".zip"], [href$=".rar"], [href$=".7z"], [href$=".tar"], [href$=".gz"], [href$=".bz2"]) {
-  --doc-icon: url(../icons/archive.svg);
-}
-.markdown-body a:is([href$=".pdf"], [href$=".doc"], [href$=".docx"], [href$=".xls"], [href$=".xlsx"], [href$=".ppt"], [href$=".pptx"], [href$=".csv"]) {
-  --doc-icon: url(../icons/file-text.svg);
-}
-.markdown-body a:is([href$=".txt"], [href$=".md"], [href$=".py"], [href$=".js"], [href$=".json"]) {
-  --doc-icon: url(../icons/code.svg);
-}
+.markdown-body a[href$=".zip"]  { --doc-icon: url(../icons/zip.svg); }
+.markdown-body a[href$=".rar"]  { --doc-icon: url(../icons/rar.svg); }
+.markdown-body a[href$=".7z"]   { --doc-icon: url(../icons/7z.svg); }
+.markdown-body a[href$=".tar"]  { --doc-icon: url(../icons/tar.svg); }
+.markdown-body a[href$=".gz"]   { --doc-icon: url(../icons/gz.svg); }
+.markdown-body a[href$=".bz2"]  { --doc-icon: url(../icons/bz2.svg); }
+.markdown-body a[href$=".pdf"]  { --doc-icon: url(../icons/pdf.svg); }
+.markdown-body a[href$=".doc"]  { --doc-icon: url(../icons/doc.svg); }
+.markdown-body a[href$=".docx"] { --doc-icon: url(../icons/docx.svg); }
+.markdown-body a[href$=".xls"]  { --doc-icon: url(../icons/xls.svg); }
+.markdown-body a[href$=".xlsx"] { --doc-icon: url(../icons/xlsx.svg); }
+.markdown-body a[href$=".ppt"]  { --doc-icon: url(../icons/ppt.svg); }
+.markdown-body a[href$=".pptx"] { --doc-icon: url(../icons/pptx.svg); }
+.markdown-body a[href$=".csv"]  { --doc-icon: url(../icons/csv.svg); }
+.markdown-body a[href$=".txt"]  { --doc-icon: url(../icons/txt.svg); }
+.markdown-body a[href$=".md"]   { --doc-icon: url(../icons/md.svg); }
+.markdown-body a[href$=".py"]   { --doc-icon: url(../icons/py.svg); }
+.markdown-body a[href$=".js"]   { --doc-icon: url(../icons/js.svg); }
+.markdown-body a[href$=".json"] { --doc-icon: url(../icons/json.svg); }
