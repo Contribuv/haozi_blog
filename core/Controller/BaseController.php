@@ -4,7 +4,9 @@ declare(strict_types=1);
 namespace Blog\Controller;
 
 use Blog\Response;
+use Blog\Service\Context;
 use Blog\Service\ErrorPage;
+use Blog\Service\Upgrade;
 use Blog\View;
 
 /**
@@ -12,11 +14,34 @@ use Blog\View;
  */
 abstract class BaseController
 {
-    /** 渲染模板并输出（自动加站点全局上下文） */
+    /** 渲染模板并输出（自动加站点全局上下文；后台页自动注入更新提醒） */
     protected function render(string $tpl, array $data = [], int $code = 200): void
     {
         self::releaseSession();
-        Response::html(View::render($tpl, $data), $code);
+        Response::html(View::render($tpl, $data + self::upgradeBanner($tpl)), $code);
+    }
+
+    /**
+     * 后台页面注入更新提醒：只读版本缓存（零网络），绝不阻塞页面渲染。
+     * 平台状态过期时挂「响应后异步探测」钩子，下次进后台即可见提醒。
+     */
+    private static function upgradeBanner(string $tpl): array
+    {
+        if (!str_starts_with(ltrim($tpl, '/'), 'admin/')) {
+            return [];
+        }
+        if (Upgrade::sourcesStale()) {
+            Upgrade::scheduleProbe();
+        }
+        $info = Upgrade::cachedLatest();
+        if ($info === null) {
+            return ['upgrade_check' => null, 'upgrade_available' => false];
+        }
+        $cur = Upgrade::parseVersion(Context::VERSION);
+        $latest = Upgrade::parseVersion((string) ($info['version'] ?? ''));
+        $available = $cur !== null && $latest !== null
+            && version_compare(Upgrade::versionString($latest), Upgrade::versionString($cur), '>');
+        return ['upgrade_check' => $info, 'upgrade_available' => $available];
     }
 
     /**

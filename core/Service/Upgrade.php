@@ -376,6 +376,15 @@ class Upgrade
         return ['t' => 0, 'info' => null];
     }
 
+    /**
+     * 只读版本缓存（零网络）：供后台页面渲染更新提醒，绝不触发请求。
+     * 缓存缺失/过期时由调用方 scheduleProbe 在响应后异步刷新。
+     */
+    public static function cachedLatest(): ?array
+    {
+        return self::loadCache()['info'];
+    }
+
     /** 原子写入缓存 */
     private static function saveCache(int $t, ?array $info): void
     {
