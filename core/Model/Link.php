@@ -50,8 +50,8 @@ class Link extends Model
             return $linkId;
         }
         self::exec(
-            'INSERT INTO links (name, url, description, avatar, sort_order, status) VALUES (?,?,?,?,?,?)',
-            [$name, $url, $desc, $avatar, $sortOrder, $status ?? 'approved']
+            'INSERT INTO links (name, url, description, avatar, sort_order, status, created_at) VALUES (?,?,?,?,?,?,?)',
+            [$name, $url, $desc, $avatar, $sortOrder, $status ?? 'approved', self::now()]
         );
         return self::insertId();
     }

@@ -60,7 +60,8 @@ class Post extends Model
         }
         if ($tag !== null && $tag !== '') {
             $conditions[] = 'tags LIKE ?';
-            $params[] = '%"' . $tag . '"%';
+            // 转义 LIKE 通配符，避免标签含 %/_ 时误匹配
+            $params[] = '%"' . addcslashes($tag, '%_\\') . '"%';
         }
         if ($search !== null && $search !== '') {
             $conditions[] = '(title LIKE ? OR content LIKE ? OR excerpt LIKE ?)';
@@ -278,6 +279,10 @@ class Post extends Model
         $createdAt = str_replace('T', ' ', $createdAt);
         if ($createdAt !== '' && strlen($createdAt) === 16) {
             $createdAt .= ':00';
+        }
+        // 校验日期格式，非法串回退为 null（由 DB 默认值接管），避免严格模式报错
+        if ($createdAt !== '' && !\DateTime::createFromFormat('Y-m-d H:i:s', $createdAt)) {
+            $createdAt = null;
         }
         $createdAt = $createdAt !== '' ? $createdAt : null;
         $status = self::normalizeStatus((string) ($form['status'] ?? 'published'));

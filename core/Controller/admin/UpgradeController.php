@@ -8,7 +8,6 @@ use Blog\Request;
 use Blog\Response;
 use Blog\Service\Auth;
 use Blog\Service\Context;
-use Blog\Service\Flash;
 use Blog\Service\Upgrade;
 
 /**
@@ -28,7 +27,7 @@ class UpgradeController extends BaseController
         $this->render('admin/upgrade.html', ['current_version' => Context::VERSION]);
     }
 
-    /** POST /admin/upgrade：检测并执行一键升级 */
+    /** POST /admin/upgrade：检测并以独立后台进程执行一键升级，HTTP 立即返回，不占用 worker */
     public function run(): void
     {
         Auth::requireAdmin();
@@ -37,22 +36,34 @@ class UpgradeController extends BaseController
         $upgradable = $info !== null && $curVer !== null && self::cmp($info['version'], $curVer) > 0;
 
         if (!$upgradable) {
-            Flash::error('当前已是最新版本，无需升级');
-            Response::redirect('/admin/upgrade');
+            Response::json(['ok' => false, 'message' => '当前已是最新版本，无需升级']);
+        }
+        if (Upgrade::isRunning()) {
+            Response::json(['ok' => false, 'message' => '升级任务已在进行中，请稍候']);
         }
 
-        try {
-            [$ok, $msg] = Upgrade::doUpgrade((string) $info['tag']);
-        } catch (\Throwable $e) {
-            $ok = false;
-            $msg = '升级失败：' . $e->getMessage();
+        $tag = (string) $info['tag'];
+        // 先自己把进度置为 running 再拉起后台进程：前端轮询立刻有反馈，也顺带充当「正在升级」的互斥标记
+        Upgrade::clearProgress();
+        Upgrade::clearCancel();
+        Upgrade::writeProgress(['state' => 'running', 'phase' => 'spawn', 'label' => '正在启动升级进程…', 'percent' => -1]);
+
+        if (Upgrade::spawnWorker($tag)) {
+            // 释放 session 排他锁后即返回；真正的升级与进度写入都在后台进程里
+            if (session_status() === PHP_SESSION_ACTIVE) {
+                session_write_close();
+            }
+            Response::json(['ok' => true]);
         }
-        if ($ok) {
-            Flash::success($msg);
-        } else {
-            Flash::error($msg);
+
+        // 环境不允许起后台进程（如 exec 被禁）：回退为同步执行，功能仍可用，只是仍会占用本 worker
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
         }
-        Response::redirect('/admin/upgrade');
+        @set_time_limit(0);
+        ignore_user_abort(true);
+        [$ok, $msg] = Upgrade::doUpgrade($tag);
+        Response::json(['ok' => $ok, 'message' => $msg]);
     }
 
     /** GET /admin/upgrade/check：异步版本检测接口（force=1 跳过缓存） */
@@ -83,6 +94,30 @@ class UpgradeController extends BaseController
                 ['key' => 'gitee', 'label' => 'Gitee', 'ok' => (bool) $state['gitee']['ok'], 'checked' => (int) $state['gitee']['checked']],
             ],
         ]);
+    }
+
+    /** GET /admin/upgrade/progress：前端轮询升级进度。升级请求已释放 session 锁，此处能立即读 */
+    public function progress(): void
+    {
+        Auth::requireAdmin();
+        $p = Upgrade::progress();
+        // 只读短请求，读完随手释放锁，免得与后续轮询互相排队
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        Response::json($p);
+    }
+
+    /** POST /admin/upgrade/cancel：写入取消标记，升级流程在下一个检查点中止 */
+    public function cancel(): void
+    {
+        Auth::requireAdmin();
+        Upgrade::requestCancel();
+        // 升级请求已释放 session 锁，此处读完即放，免得与进度轮询互相排队
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        Response::json(['ok' => true]);
     }
 
     /** 语义化版本比较：$a 大于 $b 返回正数 */

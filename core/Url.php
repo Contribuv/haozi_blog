@@ -97,6 +97,8 @@ class Url
         'admin_export_markdown' => '/admin/export/markdown',
         'admin_upgrade' => '/admin/upgrade',
         'admin_upgrade_check' => '/admin/upgrade/check',
+        'admin_upgrade_progress' => '/admin/upgrade/progress',
+        'admin_upgrade_cancel' => '/admin/upgrade/cancel',
         'static' => '/static/<filename>',
     ];
 

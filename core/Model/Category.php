@@ -57,7 +57,13 @@ class Category extends Model
             $exists = self::scalar('SELECT id FROM categories WHERE slug = ?', [$slug]);
         }
         if ($exists !== null) {
-            $slug .= '-' . ($catId ?? time());
+            // 自增后缀 -2/-3...，与 Post::save 一致，避免同秒 time() 撞唯一索引
+            $base = $slug;
+            $i = 2;
+            while (self::scalar('SELECT id FROM categories WHERE slug = ?', [$base . '-' . $i]) !== null) {
+                $i++;
+            }
+            $slug = $base . '-' . $i;
         }
         $sortOrder = (int) ($form['sort_order'] ?? 0);
 
@@ -65,7 +71,7 @@ class Category extends Model
             self::exec('UPDATE categories SET name=?, slug=?, sort_order=? WHERE id=?', [$name, $slug, $sortOrder, $catId]);
             return $catId;
         }
-        self::exec('INSERT INTO categories (name, slug, sort_order) VALUES (?,?,?)', [$name, $slug, $sortOrder]);
+        self::exec('INSERT INTO categories (name, slug, sort_order, created_at) VALUES (?,?,?,?)', [$name, $slug, $sortOrder, self::now()]);
         return self::insertId();
     }
 

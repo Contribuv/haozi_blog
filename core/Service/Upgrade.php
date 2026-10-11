@@ -37,6 +37,9 @@ class Upgrade
     /** 升级时绝不覆盖的文件后缀（数据库转储 / 会话） */
     private const SKIP_EXT = ['sql', 'session'];
 
+    /** 取消请求被识别后统一用这条消息抛出/落盘，便于上层判断是不是「取消」而非「失败」 */
+    private const CANCEL_MSG = '升级已取消';
+
     /** GitHub 主仓库（可用环境变量 UPGRADE_GITHUB_REPO 覆盖） */
     public static function githubRepo(): string
     {
@@ -194,6 +197,157 @@ class Upgrade
         return PHP_BLOG_ROOT . '/upgrade.lock';
     }
 
+    /** 是否已有升级在进行：进度处于 running 且未超出锁有效期（进程被杀时不致永久误判） */
+    public static function isRunning(): bool
+    {
+        $p = self::progress();
+        if (($p['state'] ?? '') !== 'running') {
+            return false;
+        }
+        $ts = (int) ($p['ts'] ?? 0);
+        return $ts > 0 && (time() - $ts) <= self::LOCK_TTL;
+    }
+
+    /**
+     * 以独立后台进程启动升级，脱离 HTTP 请求：PHP-FPM worker 立即释放，其它访客不再排队。
+     * 返回 false 表示当前环境无法起后台进程（如 disable_functions 禁了 exec），调用方需回退为同步执行。
+     */
+    public static function spawnWorker(string $tag): bool
+    {
+        if (!function_exists('exec')) {
+            return false;
+        }
+        // Windows 下没有 nohup/nice，起不了后台进程；直接回退同步执行，免得假报「已启动」让前端空等
+        if (DIRECTORY_SEPARATOR === '\\') {
+            return false;
+        }
+        $php = self::phpBinary();
+        $script = PHP_BLOG_ROOT . '/bin/upgrade_worker.php';
+        if ($php === '' || !is_file($script)) {
+            return false;
+        }
+        // 后台进程的 stdout/stderr 落日志，排障时能看到失败原因，而非无声丢弃
+        $log = PHP_BLOG_ROOT . '/data/upgrade_worker.log';
+        $logDir = dirname($log);
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0775, true);
+        }
+        // 参数一律 escapeshellarg；nice 压低 CPU 优先级，少抢前台。末尾 & 让 exec 立即返回
+        $cmd = 'nohup nice -n 10 ' . escapeshellarg($php) . ' ' . escapeshellarg($script)
+            . ' ' . escapeshellarg($tag) . ' >> ' . escapeshellarg($log) . ' 2>&1 &';
+        @exec($cmd);
+        // exec 无法可靠得知子进程是否起活，交给进度轮询兜底（isRunning 据进度判断）
+        return true;
+    }
+
+    /** 找到可用的 PHP CLI 解释器。FPM 下 PHP_BINARY 指向 php-fpm 不能跑脚本，需回退到 PHP_BINDIR/php */
+    private static function phpBinary(): string
+    {
+        $candidates = [];
+        if (PHP_SAPI === 'cli' && defined('PHP_BINARY')) {
+            $candidates[] = PHP_BINARY;
+        }
+        if (defined('PHP_BINDIR')) {
+            $candidates[] = PHP_BINDIR . DIRECTORY_SEPARATOR . (DIRECTORY_SEPARATOR === '\\' ? 'php.exe' : 'php');
+        }
+        foreach ($candidates as $c) {
+            if (is_string($c) && $c !== '' && is_file($c)) {
+                return $c;
+            }
+        }
+        return '';
+    }
+
+    /** 取消标记文件：前端点「取消升级」时写入，升级流程在各检查点读取 */
+    public static function cancelFile(): string
+    {
+        return PHP_BLOG_ROOT . '/data/upgrade_cancel';
+    }
+
+    /** 请求取消当前升级：只落标记，真正中止由升级流程在下一个检查点执行 */
+    public static function requestCancel(): void
+    {
+        $file = self::cancelFile();
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        @file_put_contents($file, (string) time(), LOCK_EX);
+    }
+
+    /** 当前是否有未处理的取消请求 */
+    public static function isCancelled(): bool
+    {
+        return is_file(self::cancelFile());
+    }
+
+    /** 清除取消标记（升级开始/结束时调用，免得残留影响下一次升级） */
+    public static function clearCancel(): void
+    {
+        $file = self::cancelFile();
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+
+    /** 检查点：收到取消请求即抛异常中止升级。只在覆盖代码(apply)之前调用——apply 后中途停会留半覆盖，故不查 */
+    private static function abortIfCancelled(): void
+    {
+        if (self::isCancelled()) {
+            throw new \RuntimeException(self::CANCEL_MSG);
+        }
+    }
+
+    /** 升级进度文件（data/upgrade_progress.json）：升级期间供前端轮询显示真实进度 */
+    public static function progressFile(): string
+    {
+        return PHP_BLOG_ROOT . '/data/upgrade_progress.json';
+    }
+
+    /**
+     * 写入/合并升级进度。$patch 与现有内容合并，避免各阶段只写部分字段把别的字段抹掉；
+     * 始终补 ts（前端可据此判断进度是否卡死）。原子写：先写 .tmp 再 rename。
+     */
+    public static function writeProgress(array $patch): void
+    {
+        $file = self::progressFile();
+        $cur = [];
+        if (is_file($file)) {
+            $d = json_decode((string) @file_get_contents($file), true);
+            if (is_array($d)) {
+                $cur = $d;
+            }
+        }
+        $data = array_merge($cur, $patch, ['ts' => time()]);
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        @file_put_contents($file . '.tmp', json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
+        @rename($file . '.tmp', $file);
+    }
+
+    /** 读取当前升级进度；无进度文件或内容损坏时返回 idle */
+    public static function progress(): array
+    {
+        $idle = ['state' => 'idle', 'phase' => '', 'label' => '', 'percent' => -1, 'ts' => 0];
+        $file = self::progressFile();
+        if (!is_file($file)) {
+            return $idle;
+        }
+        $d = json_decode((string) @file_get_contents($file), true);
+        return is_array($d) ? $d : $idle;
+    }
+
+    /** 清除进度文件（升级开始前调用，避免上次的陈旧终态被前端读到） */
+    public static function clearProgress(): void
+    {
+        $file = self::progressFile();
+        if (is_file($file)) {
+            @unlink($file);
+        }
+    }
+
     /** 'v1.2.3' / '1.2.3' → [1,2,3]；无法解析返回 null */
     public static function parseVersion(string $v): ?array
     {
@@ -323,24 +477,17 @@ class Upgrade
         ];
     }
 
-    /** Releases 说明 Markdown → 安全 HTML（升级页展示） */
+    /** Releases 说明 Markdown → 纯文本（升级页展示）。彻底剥离 HTML，杜绝 XSS */
     public static function bodyHtml(string $markdown): string
     {
         if (trim($markdown) === '') {
             return '';
         }
-        return self::sanitizeHtml(Markdown::renderReadme($markdown, '', ''));
-    }
-
-    /** 剥离 script/iframe/object/embed/svg、事件属性、javascript: 与表单，抵消注入风险 */
-    private static function sanitizeHtml(string $html): string
-    {
-        $html = (string) preg_replace('/<(script|iframe|object|embed|svg)\b[^>]*>.*?<\/\1>/is', '', $html);
-        $html = (string) preg_replace('/<(script|iframe|object|embed|svg)\b[^>]*\/?>/i', '', $html);
-        $html = (string) preg_replace('/\son\w+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
-        $html = (string) preg_replace('/javascript\s*:/i', '', $html);
-        $html = (string) preg_replace('/data\s*:\s*text\/html/i', '', $html);
-        return (string) preg_replace('/<form\b[^>]*>.*?<\/form>/is', '', $html);
+        // strip_tags 去掉全部标签，再压缩多余空白，保留可读的纯文本说明
+        $text = strip_tags(Markdown::renderReadme($markdown, '', ''));
+        $text = preg_replace('/[ \t]+/', ' ', $text);
+        $text = preg_replace('/\n{3,}/', "\n\n", $text);
+        return trim($text);
     }
 
     /**
@@ -361,6 +508,11 @@ class Upgrade
         fwrite($fp, (string) time());
         fclose($fp);
 
+        // 清掉上次残留的进度与取消标记，再写本次起点：备份阶段耗时不可预估，先亮出「备份中」
+        self::clearProgress();
+        self::clearCancel();
+        self::writeProgress(['state' => 'running', 'phase' => 'backup', 'label' => '正在备份数据…', 'percent' => -1]);
+
         $tmp = sys_get_temp_dir() . '/infowe_upgrade_' . bin2hex(random_bytes(5));
         try {
             @mkdir($tmp, 0775, true);
@@ -370,10 +522,22 @@ class Upgrade
             Backup::ensureDir();
             @mkdir($bakDir, 0775, true);
             file_put_contents($bakDir . '/blog.sql', Backup::sqlDump(), LOCK_EX);
-            Backup::copyUploads($bakDir . '/uploads');
+            // 大上传目录备份可能耗时数分钟。期间不刷新进度，前端会误判「进程已中断」，
+            // 故按文件数打点，但节流到最多每 2 秒写一次，避免频繁 IO
+            $lastTick = 0;
+            Backup::copyUploads($bakDir . '/uploads', function (int $n) use (&$lastTick): void {
+                $now = time();
+                if ($now - $lastTick >= 2) {
+                    $lastTick = $now;
+                    self::writeProgress(['phase' => 'backup', 'label' => '正在备份上传文件（已 ' . $n . ' 个）…', 'percent' => -1]);
+                }
+            });
+            // 备份不可中断，只能整段跑完后才检查取消；此时取消，备份已留在磁盘但代码未动
+            self::abortIfCancelled();
 
             // 2. 下载源码压缩包（直连优先 → 加速镜像 → Gitee 归档包）
             //    Gitee 的直连归档路径是 /repository/archive/{ref}.zip，写成 /archive/{ref}.zip 会 404
+            self::writeProgress(['phase' => 'download', 'label' => '正在下载源码包…', 'percent' => -1]);
             $zipUrl = 'https://github.com/' . self::githubRepo() . '/archive/refs/tags/v' . $tag . '.zip';
             $alt = self::giteeRepo() !== ''
                 ? ['https://gitee.com/' . self::giteeRepo() . '/repository/archive/v' . $tag . '.zip']
@@ -381,6 +545,8 @@ class Upgrade
             $zipPath = self::download($zipUrl, $tmp . '/release.zip', $alt);
 
             // 3. 安全解压
+            self::abortIfCancelled();
+            self::writeProgress(['phase' => 'extract', 'label' => '正在解压…', 'percent' => -1]);
             self::extract($zipPath, $tmp);
             @unlink($zipPath);
 
@@ -404,23 +570,39 @@ class Upgrade
             }
 
             // 5. 覆盖代码（跳过数据/用户目录）
+            self::abortIfCancelled();
+            self::writeProgress(['phase' => 'apply', 'label' => '正在覆盖代码…', 'percent' => -1]);
             $replaced = self::apply($root);
             if ($replaced === 0) {
                 throw new \RuntimeException('没有可替换的文件，已中止');
             }
             // 6. 清理旧版本残留：只覆盖不删除，1.x 的 public/、admin.php 会留在磁盘上
+            self::writeProgress(['phase' => 'prune', 'label' => '正在清理旧文件…', 'percent' => -1]);
             $removed = self::prune($root);
             // 7. 重建静态错误页：升级包里的 static/{404,403,50x}.html 可能滞后于当前主题，
             //    且文件缺失时 nginx 的 error_page 会扑空退回原生页
             ErrorPages::rebuild();
-            return [true, '升级成功：代码已从 v' . Context::VERSION . ' 更新为 v' . $tag
+            $msg = '升级成功：代码已从 v' . Context::VERSION . ' 更新为 v' . $tag
                 . '（替换 ' . $replaced . ' 个文件，删除 ' . $removed . ' 个旧文件）。'
                 . '数据已自动备份到 backups/upgrade_' . $ts . '_' . $tag
-                . '，请重启服务生效。'];
+                . '，请重启服务生效。';
+            self::writeProgress(['state' => 'done', 'phase' => 'done', 'label' => '升级完成', 'percent' => 100, 'message' => $msg]);
+            return [true, $msg];
         } catch (\Throwable $e) {
-            return [false, '升级失败：' . $e->getMessage()];
+            // 取消用独立状态，前端据此显示「已取消」而非「失败」；其余异常仍按失败上报
+            $cancelled = $e->getMessage() === self::CANCEL_MSG;
+            $msg = $cancelled ? self::CANCEL_MSG : ('升级失败：' . $e->getMessage());
+            self::writeProgress([
+                'state' => $cancelled ? 'cancelled' : 'failed',
+                'phase' => 'failed',
+                'label' => $cancelled ? '升级已取消' : '升级失败',
+                'percent' => -1,
+                'message' => $msg,
+            ]);
+            return [false, $msg];
         } finally {
             self::rmTree($tmp);
+            self::clearCancel();
             if (is_file($lock)) {
                 @unlink($lock);
             }
@@ -437,6 +619,8 @@ class Upgrade
             : array_merge($githubChain, $altUrls);
         $lastErr = null;
         foreach ($attempts as $u) {
+            // 上一轮下载可能因用户取消而中断，换源前先确认没被取消
+            self::abortIfCancelled();
             $isDirectGithub = ($u === $url);
             $isGitee = str_contains($u, 'gitee.com');
             try {
@@ -485,6 +669,7 @@ class Upgrade
     /** 流式下载到文件，超过大小上限即中止 */
     private static function streamDownload(string $url, string $dest): void
     {
+        self::abortIfCancelled();
         $fp = fopen($dest, 'wb');
         if ($fp === false) {
             throw new \RuntimeException('无法写入临时文件');
@@ -495,18 +680,50 @@ class Upgrade
             throw new \RuntimeException('初始化下载失败');
         }
         Http::applyCurl($ch);
+        // 下载进度上报节流用：记录上一次落盘的时间点
+        $lastReport = 0.0;
         curl_setopt_array($ch, [
             CURLOPT_FILE => $fp,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 3,
-            CURLOPT_TIMEOUT => 60,
+            // 限速 1MB/s：源码包可达数十 MB，窄带宽服务器上全速拉包会把出入口带宽
+            // 吃满，同机其它站点/服务即时表现为「网络不可达」。限速后下载慢些，但不
+            // 至于拖垮整台服务器。故单个请求的总时限相应放宽（53MB / 1MB/s ≈ 53 秒），
+            // 另加低速保护：20 秒内平均低于 1KB/s 视为停滞立即中止，免得源站挂起时
+            // 白等满 300 秒。
+            CURLOPT_MAX_RECV_SPEED_LARGE => 1048576,
+            CURLOPT_TIMEOUT => 300,
             CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_LOW_SPEED_LIMIT => 1024,
+            CURLOPT_LOW_SPEED_TIME => 20,
             // Gitee 对浏览器类 UA 会返回「正在打包」的中间页（HTTP 200 + HTML），
             // 只有 curl 类 UA 才会直接给出 zip 包，故这里沿用 curl 风格 UA
             CURLOPT_USERAGENT => 'curl/8.21.0',
             CURLOPT_NOPROGRESS => false,
-            CURLOPT_PROGRESSFUNCTION => static function ($res, $dlTotal, $dlNow): int {
-                return $dlNow > self::MAX_BYTES ? 1 : 0; // 返回非 0 中止传输
+            CURLOPT_PROGRESSFUNCTION => static function ($res, $dlTotal, $dlNow) use (&$lastReport): int {
+                // 用户点了取消：返回非 0 立即中止传输
+                if (self::isCancelled()) {
+                    return 1;
+                }
+                // 超过大小上限立即中止传输（返回非 0）
+                if ($dlNow > self::MAX_BYTES) {
+                    return 1;
+                }
+                // 下载进度节流上报：该回调每收一个数据块就触发（每秒可达上百次），
+                // 每 0.3 秒才落一次盘，免得频繁写文件反把下载拖慢
+                $now = microtime(true);
+                if ($dlTotal > 0 && $now - $lastReport >= 0.3) {
+                    $lastReport = $now;
+                    self::writeProgress([
+                        'state' => 'running',
+                        'phase' => 'download',
+                        'label' => '正在下载源码包…',
+                        'percent' => (int) floor($dlNow / $dlTotal * 100),
+                        'dl_now' => $dlNow,
+                        'dl_total' => $dlTotal,
+                    ]);
+                }
+                return 0;
             },
         ]);
         $ok = curl_exec($ch);
@@ -514,6 +731,8 @@ class Upgrade
         $err = curl_error($ch);
         curl_close($ch);
         fclose($fp);
+        // 传输中断若是因用户取消，抛取消异常（而非报「传输失败 / HTTP 错误」）
+        self::abortIfCancelled();
         if ($ok === false || $code < 200 || $code >= 300) {
             throw new \RuntimeException($err !== '' ? $err : ('HTTP ' . $code));
         }

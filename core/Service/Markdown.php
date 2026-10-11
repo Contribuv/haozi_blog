@@ -43,7 +43,7 @@ class Markdown
         return [$html, $toc];
     }
 
-    /** 渲染 GitHub README：把相对链接补成绝对 URL 后转为 HTML */
+    /** 渲染 GitHub README：把相对链接补成绝对 URL 后转为 HTML，并净化外部内容 */
     public static function renderReadme(string $md, string $slug, string $branch = 'main'): string
     {
         if (trim($md) === '') {
@@ -51,10 +51,32 @@ class Markdown
         }
         $p = new self();
         $html = $p->convert($md);
-        // README 来自 GitHub 仓库，同属外部内容，必须和正文一样走 hardenLinks，
-        // 否则恶意仓库里的 [x](javascript:...) 会在本站项目页执行
+        // README 来自第三方仓库，可能含恶意原始 HTML，必须净化后再输出
+        $html = self::sanitizeExternalHtml($html);
         $html = self::hardenLinks($html);
         return self::absolutizeReadme($html, $slug, $branch);
+    }
+
+    /** 净化外部 HTML（README）：剥离危险标签、事件属性与伪协议，保留 Markdown 生成的常规标签 */
+    private static function sanitizeExternalHtml(string $html): string
+    {
+        // 1. 整块剥离危险标签及其内容
+        $html = (string) preg_replace('/<(script|style|iframe|object|embed|svg|form)\b[^>]*>.*?<\/\1>/is', '', $html);
+        $html = (string) preg_replace('/<(script|style|iframe|object|embed|svg|form)\b[^>]*\/?>/i', '', $html);
+        // 2. 移除所有 on*= 事件属性
+        $html = (string) preg_replace('/\s+on\w+\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i', '', $html);
+        // 3. 移除 javascript:/vbscript: 伪协议（含空白与实体混淆的兜底）
+        $html = (string) preg_replace_callback('/\b(href|src|action|formaction)\s*=\s*(["\'])(.*?)\2/i', static function (array $m): string {
+            $val = trim($m[3]);
+            $decoded = html_entity_decode($val, ENT_QUOTES, 'UTF-8');
+            $stripped = preg_replace('/[\s\x00-\x1f\x7f]+/', '', strtolower($decoded));
+            if (str_starts_with($stripped, 'javascript:') || str_starts_with($stripped, 'vbscript:')
+                || str_starts_with($stripped, 'data:text/html')) {
+                return $m[1] . '="#"';
+            }
+            return $m[0];
+        }, $html);
+        return $html;
     }
 
     // ==================== 图片 / 链接后处理 ====================

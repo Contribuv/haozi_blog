@@ -118,5 +118,7 @@ return [
         ['GET', '/admin/upgrade', 'admin/UpgradeController@index'],
         ['POST', '/admin/upgrade', 'admin/UpgradeController@run'],
         ['GET', '/admin/upgrade/check', 'admin/UpgradeController@check'],
+        ['GET', '/admin/upgrade/progress', 'admin/UpgradeController@progress'],
+        ['POST', '/admin/upgrade/cancel', 'admin/UpgradeController@cancel'],
     ],
 ];

@@ -36,6 +36,7 @@ class PostController extends BaseController
         }
 
         $totalPages = max(1, (int) ceil($total / Post::PAGE_SIZE));
+        $page = min($page, $totalPages);
         $this->render('admin/posts.html', [
             'posts' => $posts,
             'status_filter' => $statusFilter,

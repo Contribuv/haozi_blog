@@ -20,6 +20,12 @@ class ProjectCache
         return $dir . '/project_gh.json';
     }
 
+    /** 锁文件，put/touch 的读改写需互斥，防止并发写丢更新 */
+    private static function lockFile(): string
+    {
+        return self::file() . '.lock';
+    }
+
     private static function loadAll(): array
     {
         if (self::$memo !== null) {
@@ -33,6 +39,17 @@ class ProjectCache
         return self::$memo = (is_array($d) ? $d : []);
     }
 
+    /** 加锁后从磁盘读取最新快照（写操作必须走这里，不能用 memo） */
+    private static function loadAllLocked(): array
+    {
+        $f = self::file();
+        if (!is_file($f)) {
+            return [];
+        }
+        $d = json_decode((string) file_get_contents($f), true);
+        return is_array($d) ? $d : [];
+    }
+
     /** 只读快照；无缓存返回 null */
     public static function snapshot(string $slug): ?array
     {
@@ -44,16 +61,18 @@ class ProjectCache
         return is_array($entry) ? $entry : null;
     }
 
-    /** 写入某 slug 的快照并持久化 */
+    /** 写入某 slug 的快照并持久化（加锁，读改写原子） */
     public static function put(string $slug, array $entry): void
     {
         if ($slug === '') {
             return;
         }
-        $all = self::loadAll();
-        $all[$slug] = $entry;
-        self::$memo = $all;
-        @file_put_contents(self::file(), json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        self::withLock(static function () use ($slug, $entry): void {
+            $all = self::loadAllLocked();
+            $all[$slug] = $entry;
+            self::$memo = $all;
+            self::persist($all);
+        });
     }
 
     /**
@@ -65,12 +84,40 @@ class ProjectCache
         if ($slug === '') {
             return;
         }
-        $all = self::loadAll();
-        if (!isset($all[$slug]) || !is_array($all[$slug])) {
-            return;
+        self::withLock(static function () use ($slug, $ts): void {
+            $all = self::loadAllLocked();
+            if (!isset($all[$slug]) || !is_array($all[$slug])) {
+                return;
+            }
+            $all[$slug]['ts'] = $ts;
+            self::$memo = $all;
+            self::persist($all);
+        });
+    }
+
+    /** 加锁执行写操作，异常时解锁 */
+    private static function withLock(callable $fn): void
+    {
+        $lock = @fopen(self::lockFile(), 'c');
+        if ($lock !== false) {
+            @flock($lock, LOCK_EX);
         }
-        $all[$slug]['ts'] = $ts;
-        self::$memo = $all;
-        @file_put_contents(self::file(), json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        try {
+            $fn();
+        } finally {
+            if ($lock !== false) {
+                @flock($lock, LOCK_UN);
+                @fclose($lock);
+            }
+        }
+    }
+
+    /** 原子持久化（tmp + rename） */
+    private static function persist(array $all): void
+    {
+        $f = self::file();
+        $tmp = $f . '.tmp';
+        @file_put_contents($tmp, json_encode($all, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), LOCK_EX);
+        @rename($tmp, $f);
     }
 }

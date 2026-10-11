@@ -45,9 +45,14 @@ class Hook
             self::$sorted[$name] = true;
         }
         foreach (self::$listeners[$name] as [, $fn]) {
-            $ret = $fn($payload, $ctx);
-            if ($ret !== null) {
-                $payload = $ret;
+            try {
+                $ret = $fn($payload, $ctx);
+                if ($ret !== null) {
+                    $payload = $ret;
+                }
+            } catch (\Throwable $e) {
+                // 单个监听器异常不得拖垮整站；记录后继续执行后续监听器
+                error_log('[Hook] 监听器执行失败（' . $name . '）：' . $e->getMessage());
             }
         }
         return $payload;

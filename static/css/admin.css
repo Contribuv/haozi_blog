@@ -878,6 +878,18 @@ button.tag-chip:hover { border-color: var(--accent); color: var(--accent); backg
   color: var(--text-secondary);
   font-variant-numeric: tabular-nums;
 }
+/* 不定进度：升级的非下载阶段拿不到真实百分比，用一段来回滑动的进度条表示「正在处理」 */
+.upload-bar-fill.is-indeterminate {
+  width: 40% !important;
+  transition: none;
+  animation: upgradeFlow 1.1s ease-in-out infinite;
+}
+@keyframes upgradeFlow {
+  0%   { margin-left: -40%; }
+  100% { margin-left: 100%; }
+}
+/* 浮窗里的取消按钮：靠右，与进度区拉开一点距离 */
+.upgrade-cancel-row { margin-top: var(--sp-3); text-align: right; }
 
 /* ─────────── 20. settings 专属组件 ─────────── */
 .avatar-edit { display: flex; align-items: center; gap: var(--sp-4); }

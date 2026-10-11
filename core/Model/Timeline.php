@@ -37,7 +37,7 @@ class Timeline extends Model
             self::exec('UPDATE timeline SET date=?, content=?, sort_order=? WHERE id=?', [$date, $content, $sortOrder, $itemId]);
             return $itemId;
         }
-        self::exec('INSERT INTO timeline (date, content, sort_order) VALUES (?,?,?)', [$date, $content, $sortOrder]);
+        self::exec('INSERT INTO timeline (date, content, sort_order, created_at) VALUES (?,?,?,?)', [$date, $content, $sortOrder, self::now()]);
         return self::insertId();
     }
 

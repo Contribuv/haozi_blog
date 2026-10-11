@@ -57,7 +57,8 @@ class FeedController extends BaseController
         if ($ts === false) {
             return $createdAt;
         }
-        return date('D, d M Y H:i:s', $ts) . ' +0800';
+        // 时区标签用 O（与 PHP 配置的时区一致），不再硬编码 +0800
+        return date('D, d M Y H:i:s O', $ts);
     }
 
     private static function esc(string $s): string

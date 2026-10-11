@@ -93,7 +93,10 @@ class View
         $file = $cacheDir . '/' . sha1($tpl . '|' . $src) . '.php';
         if (!is_file($file) || filemtime($file) < filemtime($src)) {
             $php = Compiler::compile($code, $tpl);
-            file_put_contents($file, $php, LOCK_EX);
+            // 先写临时文件再 rename，避免并发请求 require 到半写的 PHP 导致解析错误
+            $tmp = $file . '.tmp';
+            @file_put_contents($tmp, $php, LOCK_EX);
+            @rename($tmp, $file);
         }
         $m = require $file;
         if (!is_array($m) || !isset($m['fn'], $m['meta'])) {

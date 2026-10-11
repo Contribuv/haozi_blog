@@ -45,6 +45,12 @@ class ProjectSync
         return $dir . '/project_sync_state.json';
     }
 
+    /** 推进锁文件：轮询与 drain 两路并发推进时互斥，避免重复拉取与计数错乱 */
+    private static function lockFile(): string
+    {
+        return self::stateFile() . '.lock';
+    }
+
     /** 从磁盘读取原始状态（不做陈旧清理） */
     public static function read(): array
     {
@@ -142,6 +148,25 @@ class ProjectSync
 
     /** 推进一个项目（由轮询接口调用）。返回推进后的状态。 */
     public static function advance(): array
+    {
+        // 轮询与 fastcgi_finish_request 后的 drain 可能并发触发，此处用文件锁互斥，
+        // 保证 read-modify-write 与网络拉取原子化，避免同一项目被重复拉取、计数错乱
+        $lock = @fopen(self::lockFile(), 'c');
+        if ($lock !== false) {
+            @flock($lock, LOCK_EX);
+        }
+        try {
+            return self::advanceLocked();
+        } finally {
+            if ($lock !== false) {
+                @flock($lock, LOCK_UN);
+                @fclose($lock);
+            }
+        }
+    }
+
+    /** 加锁后的实际推进逻辑 */
+    private static function advanceLocked(): array
     {
         $st = self::read();
         if (!$st['running']) {

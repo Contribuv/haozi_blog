@@ -43,8 +43,8 @@ class Memory extends Model
             return $id;
         }
         self::exec(
-            'INSERT INTO memories (title, text, image, date, sort_order) VALUES (?,?,?,?,?)',
-            [$title, $text, $image, $date, $sortOrder]
+            'INSERT INTO memories (title, text, image, date, sort_order, created_at) VALUES (?,?,?,?,?,?)',
+            [$title, $text, $image, $date, $sortOrder, self::now()]
         );
         return self::insertId();
     }

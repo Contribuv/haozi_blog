@@ -78,27 +78,32 @@ class Backup
         return implode("\n", $lines) . "\n";
     }
 
-    /** 写出数据库备份文件，返回文件名 */
+    /** 写出数据库备份文件，返回文件名。磁盘满/无权限时抛异常，避免「假备份」后导入覆盖数据 */
     public static function writeDbBackup(?string $filename = null): string
     {
         self::ensureDir();
         $filename = $filename ?? ('blog_backup_' . date('Ymd_His') . '.sql');
-        file_put_contents(self::dir() . '/' . $filename, self::sqlDump(), LOCK_EX);
+        $path = self::dir() . '/' . $filename;
+        $ok = @file_put_contents($path, self::sqlDump(), LOCK_EX);
+        if ($ok === false || $ok === 0) {
+            @unlink($path);
+            throw new \RuntimeException('备份写入失败：磁盘已满或目录无写权限');
+        }
         return $filename;
     }
 
-    /** 拷贝 uploads/ 到目标目录（升级前数据备份用） */
-    public static function copyUploads(string $dest): void
+    /** 拷贝 uploads/ 到目标目录（升级前数据备份用）。$onProgress 每复制一个文件回调一次（带已复制数量），供上层刷新进度 */
+    public static function copyUploads(string $dest, ?callable $onProgress = null): void
     {
         $src = Upload::root();
         if (!is_dir($src)) {
             return;
         }
-        self::copyTree($src, $dest);
+        self::copyTree($src, $dest, $onProgress);
     }
 
-    /** 递归复制目录 */
-    public static function copyTree(string $src, string $dst): int
+    /** 递归复制目录。$onFile 可选：每复制一个文件后回调一次（带累计数量） */
+    public static function copyTree(string $src, string $dst, ?callable $onFile = null): int
     {
         $count = 0;
         if (!is_dir($dst)) {
@@ -117,8 +122,12 @@ class Backup
                     mkdir($target, 0775, true);
                 }
             } else {
-                @copy($f->getPathname(), $target);
-                $count++;
+                if (@copy($f->getPathname(), $target)) {
+                    $count++;
+                    if ($onFile !== null) {
+                        $onFile($count);
+                    }
+                }
             }
         }
         return $count;

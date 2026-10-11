@@ -189,12 +189,20 @@ class Comment extends Model
     public static function delete(int $commentId): void
     {
         $ids = [$commentId];
+        $visited = [$commentId => true];
         $frontier = [$commentId];
         while ($frontier) {
             $ph = implode(',', array_fill(0, count($frontier), '?'));
             $rows = self::rows("SELECT id FROM comments WHERE parent_id IN ({$ph})", $frontier);
-            $frontier = array_map(static fn (array $r): int => (int) $r['id'], $rows);
-            $ids = array_merge($ids, $frontier);
+            $frontier = [];
+            foreach ($rows as $r) {
+                $cid = (int) $r['id'];
+                if (!isset($visited[$cid])) {
+                    $visited[$cid] = true;
+                    $frontier[] = $cid;
+                    $ids[] = $cid;
+                }
+            }
         }
         $ph = implode(',', array_fill(0, count($ids), '?'));
         self::exec("DELETE FROM comments WHERE id IN ({$ph})", $ids);

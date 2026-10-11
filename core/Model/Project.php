@@ -99,8 +99,8 @@ class Project extends Model
             return $projectId;
         }
         self::exec(
-            'INSERT INTO projects (name, description, url, stars, language, languages, topics, sort_order, featured, github_repo, custom_name) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
-            [$name, $description, $url, $stars, $language, $languages, $topics, $sortOrder, $featured, $githubRepo, $isCustom]
+            'INSERT INTO projects (name, description, url, stars, language, languages, topics, sort_order, featured, github_repo, custom_name, created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+            [$name, $description, $url, $stars, $language, $languages, $topics, $sortOrder, $featured, $githubRepo, $isCustom, self::now()]
         );
         return self::insertId();
     }

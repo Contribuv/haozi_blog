@@ -31,8 +31,9 @@ class Csrf
         if ($referer !== '') {
             return self::hostOf($referer) === $host;
         }
-        // 两者都无：非浏览器客户端（如 curl / 监控脚本），无从判断来源，放行
-        return true;
+        // 两者都无：现代浏览器 POST 必然带 Origin 或 Referer，缺失大概率是被剥离或非浏览器，
+        // 直接拒绝更安全（CLI 已在开头放行）
+        return false;
     }
 
     /** 从 scheme://host[:port] 中取出 host 部分；格式非法返回空串 */

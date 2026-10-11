@@ -447,7 +447,45 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.2.5**
+当前版本：**2.2.6**
+
+### 从 2.2.5 升级到 2.2.6
+
+本轮为安全与健壮性修复，涉及数据正确性、并发安全、XSS 与 CSRF 加固。
+
+**安全修复**
+
+1. **升级说明 XSS（高）**：升级页的 Release 说明由 GitHub 拉取，此前经正则净化后以 HTML 渲染，正则可被实体编码绕过。现改为服务端 `strip_tags` 输出纯文本，前端统一转义，彻底消除注入面。
+2. **项目 README XSS（高）**：第三方仓库 README 中的原始 HTML（`<script>`、事件属性、`javascript:` 伪协议）此前仅过滤字面 `javascript:`，现新增 `sanitizeExternalHtml` 整块剥离危险标签、移除事件属性并对伪协议做实体解码兜底。
+3. **CSRF 收紧（中）**：Origin 与 Referer 同时缺失时不再放行（此前为兼容 curl/监控脚本放行）。现代浏览器 POST 必带其一，缺失视为跨站或剥离来源头，直接拒。CLI 仍放行。
+4. **会话 Cookie Secure 自动判定（低）**：HTTPS 请求下 `secure` 自动置 `true`，避免明文信道泄露会话；配置项仅作显式覆盖。
+5. **全局安全响应头（低）**：新增 `X-Content-Type-Options: nosniff`、`X-Frame-Options: SAMEORIGIN`、`Referrer-Policy: strict-origin-when-cross-origin`。
+
+**健壮性修复**
+
+6. **备份写入失败不再假报成功（严重）**：`Backup::writeDbBackup()` 磁盘满/无权限时 `file_put_contents` 返回 false，此前仍返回文件名，导致导入在无有效备份下覆盖数据。现检查返回值，失败抛异常并清理空文件。
+7. **插件异常不再拖垮整站（高）**：`Hook::emit()` 单个监听器抛异常现被捕获并 `error_log`，后续监听器继续执行，核心流程不受影响。
+8. **项目同步并发安全（高）**：`ProjectSync::advance()` 与 `ProjectCache::put/touch` 的读改写此前无锁，轮询与后台 drain 并发时会重复拉取、丢更新。现加 `flock` 互斥，`ProjectCache` 改为锁内从磁盘重读 + tmp+rename 原子写。
+9. **多模型 created_at 时区一致（高）**：Memory / Timeline / Link / Category / Project 的 INSERT 此前省略 `created_at`，由 DB `CURRENT_TIMESTAMP` 决定，若 MySQL 时区非 +08:00 会与文章时间错位。现统一显式写 `self::now()`（PHP 时区）。
+10. **模板编译缓存原子写（中）**：`View::compiled()` 改 tmp+rename，避免并发请求 `require` 到半写的 PHP 文件。
+11. **RSS pubDate 时区自适应（中）**：不再硬编码 `+0800`，改用 `date('O')` 与 PHP 配置时区联动。
+12. **后台文章列表分页越界（中）**：`page` 钳制到 `totalPages`，越界页不再返回空列表。
+13. **分类 slug 冲突（低）**：同秒新建同名分类时 `time()` 后缀撞唯一索引，现改为 `-2/-3...` 自增。
+14. **评论删除环检测（低）**：`Comment::delete` BFS 加 `visited` 去重，异常父子环不再死循环。
+15. **文章日期格式校验（低）**：`created_at` 非法串回退 null，避免 MySQL 严格模式报错。
+16. **标签 LIKE 通配符转义（低）**：标签含 `%/_` 时不再误匹配。
+17. **复制进度计数（低）**：`Backup::copyTree` 仅在 `copy` 成功时计数。
+
+**升级流程优化（延续 2.2.5）**
+
+18. **升级改为后台异步执行**：升级由独立 PHP 进程（`bin/upgrade_worker.php`）跑，HTTP 请求立即返回，PHP-FPM worker 秒释放，其他访客不再排队；CPU 用 `nice` 降优先级。进度仍轮询 `upgrade_progress.json`，浮窗照常显示。
+19. **升级取消按钮**：浮窗新增「取消升级」，服务端在备份后/解压前/覆盖前检查取消标记，下载中由 curl 进度回调中止。
+20. **备份阶段进度打点**：大上传目录备份时按文件数刷新进度，避免前端误判「进程已中断」。
+
+> 无数据库结构变更；nginx 无需改动。
+
+<details>
+<summary><b>历史版本日志（点击展开）</b></summary>
 
 ### 从 2.2.4 升级到 2.2.5
 
