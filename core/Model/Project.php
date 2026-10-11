@@ -44,12 +44,14 @@ class Project extends Model
     /**
      * 保存项目：仅填 GitHub 地址时自动拉取实时数据（stars/语言/标签/描述）。
      * keepName=true 用于「同步」场景，尊重已有自定义名称不覆盖。
+     * $prefetchedGh 非空时直接复用调用方已拉取的 GitHub 数据（fetchRepo 结果），
+     * 避免同步链路对同一仓库重复请求 API。
      */
-    public static function save(array $form, ?int $projectId = null, bool $keepName = false): int
+    public static function save(array $form, ?int $projectId = null, bool $keepName = false, ?array $prefetchedGh = null): int
     {
         $customName = trim((string) ($form['name'] ?? ''));
         $inputUrl = (string) ($form['url'] ?? '');
-        $gh = Github::fetchRepo($inputUrl);
+        $gh = $prefetchedGh ?? Github::fetchRepo($inputUrl);
 
         if ($gh) {
             $ghName = $gh['name'];

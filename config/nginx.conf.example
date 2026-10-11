@@ -22,6 +22,14 @@ location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
 location ~ ^/themes/.+\.(html|json)$        { return 404; }
 
+# Gzip 压缩：HTML/CSS/JS/JSON/RSS/SVG 传输体积降约 70%，对首屏提速明显。
+# 注意：图片类（png/jpg/webp）本身已压缩，勿加入，白耗 CPU。
+gzip on;
+gzip_comp_level 5;
+gzip_min_length 1024;
+gzip_vary on;
+gzip_types text/plain text/css application/javascript application/json application/xml application/rss+xml image/svg+xml;
+
 # 上传目录：防盗链（^~ 前缀匹配优先于下方所有正则，/uploads/ 统一走这里）
 location ^~ /uploads/ {
     # 合法来源：无 Referer（RSS 阅读器 / 直接打开 / 聊天工具预览）与本站（含泛子域）；

@@ -85,21 +85,218 @@ class AssetController extends BaseController
             $this->serve($file, $maxAge, 'image/png');
             return;
         }
-        foreach ($sources as $url) {
-            [$data, $mime] = $this->fetchImage($url);
-            if ($data !== null) {
-                if (!is_dir($dir)) {
-                    @mkdir($dir, 0775, true);
+        // 前台绝不联网：未命中直接 404，响应后异步预热自愈（下次刷新可见）
+        $this->warmAvatarLater($file, $sources);
+        $this->abort404();
+    }
+
+    /**
+     * 响应结束后异步预热头像：前台请求只读磁盘缓存，绝不在此线程 curl 外网
+     * —— 外网图源慢/挂时会成片占满 php-fpm worker 拖垮整站，与 /readme-img 同一口径。
+     * 全部图源失败写 1 小时 fail 标记，避免图源故障时每个访客请求都空跑一次。
+     */
+    private function warmAvatarLater(string $file, array $sources): void
+    {
+        $fail = $file . '.fail';
+        if (is_file($fail) && (time() - filemtime($fail)) < 3600) {
+            return;
+        }
+        $dir = dirname($file);
+        // 非 static 闭包以便调用 fetchImage；fastcgi_finish_request 先发完响应再预热
+        register_shutdown_function(function () use ($dir, $file, $fail, $sources): void {
+            if (function_exists('fastcgi_finish_request')) {
+                @set_time_limit(0);
+                @fastcgi_finish_request();
+            }
+            foreach ($sources as $url) {
+                [$data, $mime] = $this->fetchImage($url);
+                if ($data !== null) {
+                    if (!is_dir($dir)) {
+                        @mkdir($dir, 0775, true);
+                    }
+                    @file_put_contents($file, $data, LOCK_EX);
+                    @unlink($fail);
+                    return;
                 }
-                @file_put_contents($file, $data, LOCK_EX);
-                header('Content-Type: ' . $mime);
-                header('Cache-Control: public, max-age=' . $maxAge);
-                header('X-Avatar-Source: fetch');
-                echo $data;
-                exit;
+            }
+            @touch($fail);
+        });
+    }
+
+    /** 单张代理图片大小上限：8MB，与 README 图片本地化口径一致 */
+    private const README_IMG_MAX = 8388608;
+
+    /** 代理缓存有效期（秒） */
+    private const README_IMG_TTL = 604800;
+
+    /**
+     * /readme-img?u=<base64url>：README 外链图片站内代理。
+     * 刻意只读磁盘缓存、绝不联网 —— 前台请求一旦 curl 外网（被墙时最长 10 秒），
+     * 会成片占满 php-fpm worker，拖垮整站。缓存由后台同步期预热写入。
+     */
+    public function readmeImage(): void
+    {
+        $url = self::b64urlDecode((string) ($_GET['u'] ?? ''));
+        if ($url === '') {
+            $this->abort404();
+        }
+        $file = self::cacheFile($url);
+        if (!is_file($file)) {
+            $this->abort404();
+        }
+        $this->serveImageBytes((string) file_get_contents($file), self::README_IMG_TTL);
+    }
+
+    /** 代理缓存文件路径：md5 定名，键恒为 32 位十六进制，无法路径穿越 */
+    private static function cacheFile(string $url): string
+    {
+        return STORAGE_PATH . '/cache/readme-img/' . md5($url);
+    }
+
+    /**
+     * 后台同步期预热：下载并校验后写入缓存，供前台只读。
+     * 仅在同步进程（ProjectSync / 后台加项目）中调用，可容忍网络等待；
+     * README 由第三方仓库控制，必须走 SSRF 校验与魔数校验，否则此函数会变成打内网的跳板。
+     */
+    public static function warmReadmeImage(string $b64): void
+    {
+        $url = self::b64urlDecode($b64);
+        if ($url === '' || !self::isSafeRemoteUrl($url)) {
+            return;
+        }
+        $file = self::cacheFile($url);
+        if (is_file($file) && (time() - filemtime($file)) < self::README_IMG_TTL) {
+            return;
+        }
+        $data = self::fetchRemoteImage($url);
+        // 非图片（HTML/脚本等）不入缓存，避免前台把任意内容当图片输出
+        if ($data === null || self::detectImageMime($data) === null) {
+            return;
+        }
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        @file_put_contents($file, $data, LOCK_EX);
+    }
+
+    /** 输出图片字节：MIME 按魔数判定（非图片拒绝）；SVG 追加沙箱 CSP，防直接访问执行脚本 */
+    private function serveImageBytes(string $data, int $maxAge): void
+    {
+        $mime = self::detectImageMime($data);
+        if ($mime === null) {
+            $this->abort404();
+        }
+        header('Content-Type: ' . $mime);
+        header('Content-Length: ' . strlen($data));
+        header('Cache-Control: public, max-age=' . $maxAge);
+        header('X-Content-Type-Options: nosniff');
+        if ($mime === 'image/svg+xml') {
+            header("Content-Security-Policy: default-src 'none'; style-src 'unsafe-inline'; sandbox");
+        }
+        echo $data;
+        exit;
+    }
+
+    /** 按魔数识别图片 MIME；非图片（含 HTML/脚本）返回 null */
+    private static function detectImageMime(string $data): ?string
+    {
+        if (str_starts_with($data, "\x89PNG\r\n\x1a\n")) {
+            return 'image/png';
+        }
+        if (str_starts_with($data, "\xff\xd8\xff")) {
+            return 'image/jpeg';
+        }
+        if (in_array(substr($data, 0, 6), ['GIF87a', 'GIF89a'], true)) {
+            return 'image/gif';
+        }
+        if (substr($data, 0, 4) === 'RIFF' && substr($data, 8, 4) === 'WEBP') {
+            return 'image/webp';
+        }
+        if (str_starts_with($data, "\x00\x00\x01\x00")) {
+            return 'image/x-icon';
+        }
+        // SVG：shields.io 徽章即此格式，文本判定；输出侧已加沙箱 CSP
+        if (stripos(substr($data, 0, 512), '<svg') !== false) {
+            return 'image/svg+xml';
+        }
+        return null;
+    }
+
+    /** 校验可安全代理的远端地址：http(s) + 公网主机 + 80/443 端口 */
+    private static function isSafeRemoteUrl(string $url): bool
+    {
+        $p = parse_url($url);
+        if (!is_array($p) || !isset($p['host'])) {
+            return false;
+        }
+        $scheme = strtolower((string) ($p['scheme'] ?? ''));
+        if ($scheme !== 'http' && $scheme !== 'https') {
+            return false;
+        }
+        $port = (int) ($p['port'] ?? ($scheme === 'https' ? 443 : 80));
+        if ($port !== 80 && $port !== 443) {
+            return false;
+        }
+        $host = trim((string) $p['host'], '[]');
+        if ($host === '') {
+            return false;
+        }
+        if (filter_var($host, FILTER_VALIDATE_IP) !== false) {
+            return self::isPublicIp($host);
+        }
+        // 域名先解析再逐个校验，任一落在内网/保留段即拒绝
+        $ips = gethostbynamel($host);
+        if ($ips === false || $ips === []) {
+            return false;
+        }
+        foreach ($ips as $ip) {
+            if (!self::isPublicIp($ip)) {
+                return false;
             }
         }
-        $this->abort404();
+        return true;
+    }
+
+    private static function isPublicIp(string $ip): bool
+    {
+        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) !== false;
+    }
+
+    /** 下载远端图片字节；仅后台预热调用（前台已改为只读缓存）；失败或超限返回 null */
+    private static function fetchRemoteImage(string $url): ?string
+    {
+        $ch = curl_init($url);
+        if ($ch === false) {
+            return null;
+        }
+        \Blog\Service\Http::applyCurl($ch); // 注入 CA 证书，Windows 下 curl 默认不带 CA 包
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 6,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_MAXFILESIZE => self::README_IMG_MAX,
+            CURLOPT_USERAGENT => 'infowe-blog',
+        ]);
+        $body = curl_exec($ch);
+        $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($body === false || $code < 200 || $code >= 300) {
+            return null;
+        }
+        $data = (string) $body;
+        return ($data === '' || strlen($data) > self::README_IMG_MAX) ? null : $data;
+    }
+
+    /** base64url 解码（HTTP query 里 padding 已去掉），非法输入返回 '' */
+    private static function b64urlDecode(string $s): string
+    {
+        if ($s === '' || preg_match('/[^A-Za-z0-9\-_]/', $s)) {
+            return '';
+        }
+        $d = base64_decode(strtr($s, '-_', '+/'), true);
+        return $d === false ? '' : $d;
     }
 
     /** 输出文件（含条件请求与缓存头） */

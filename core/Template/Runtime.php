@@ -637,8 +637,13 @@ class Runtime
         // 首次调用读取并清空会话；继承链的收集/渲染两阶段重复执行同一模板时复用缓存，
         // 否则收集阶段会把闪存提前消费掉，渲染阶段读到空导致消息不显示。
         if ($this->flashedCache === null) {
-            $this->flashedCache = $_SESSION['_flashes'] ?? [];
-            unset($_SESSION['_flashes']);
+            if (array_key_exists('_flashes_takeover', $GLOBALS)) {
+                // session 已在渲染前关闭（BaseController::releaseSession），flash 被提前消费至此
+                $this->flashedCache = is_array($GLOBALS['_flashes_takeover']) ? $GLOBALS['_flashes_takeover'] : [];
+            } else {
+                $this->flashedCache = $_SESSION['_flashes'] ?? [];
+                unset($_SESSION['_flashes']);
+            }
         }
         $flashes = $this->flashedCache;
         $withCat = (bool)($kw['with_categories'] ?? false);

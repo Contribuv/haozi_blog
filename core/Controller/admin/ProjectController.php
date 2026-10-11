@@ -42,10 +42,13 @@ class ProjectController extends BaseController
                 $this->render('admin/project_edit.html', ['project' => null]);
                 return;
             }
-            Project::save($_POST);
+            // 一次 fetchProject 拿齐 repo 元数据 + README，repo 数据同时喂给 save，
+            // 避免「save 内部 fetchRepo + fetchProject 内部再拉 repo」的重复请求
+            $fp = $slug !== null ? Github::fetchProject($urlIn) : null;
+            Project::save($_POST, null, false, $fp['gh'] ?? null);
             // 同时同步 README 入缓存（管理员手动触发，前台零 GitHub 请求）
-            if ($slug !== null) {
-                ProjectCache::put($slug, Github::fetchProject($urlIn));
+            if ($fp !== null) {
+                ProjectCache::put($slug, $fp);
             }
             Flash::success('项目已添加（已从 GitHub 同步实时数据）');
             Response::redirect('/admin/projects');
@@ -133,6 +136,9 @@ class ProjectController extends BaseController
     public function syncStatus(): void
     {
         Auth::requireAdmin();
+        // 轮询可能触发 advance（GitHub 网络 IO），先释放 session 锁，
+        // 避免阻塞管理员的其它并发后台请求
+        self::releaseSession();
         if ((string) ($_GET['consume'] ?? '') === '1') {
             Response::json(ProjectSync::consume());
         }

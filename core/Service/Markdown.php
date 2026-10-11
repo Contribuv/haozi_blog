@@ -161,6 +161,30 @@ class Markdown
         }, $html));
     }
 
+    /**
+     * README 外链图片改走站内代理 /readme-img，并补 lazy。
+     * 未覆盖的域名（shields.io 徽章等）多为被墙资源，浏览器同步等待会整页卡住；
+     * 交给站内代理按需下载 + 磁盘缓存，前台不再直连第三方。
+     */
+    public static function proxyExternalImages(string $html): string
+    {
+        if ($html === '') {
+            return $html;
+        }
+        return (string) preg_replace_callback('/<img\b[^>]*>/i', static function (array $m): string {
+            $tag = $m[0];
+            if (!preg_match('/\bsrc="(https?:\/\/[^"]+)"/i', $tag, $sm)) {
+                return $tag;
+            }
+            $u = 'u=' . rtrim(strtr(base64_encode($sm[1]), '+/', '-_'), '=');
+            $tag = (string) preg_replace('/\bsrc="[^"]*"/i', 'src="/readme-img?' . $u . '"', $tag, 1);
+            if (stripos($tag, 'loading=') === false) {
+                $tag = (string) preg_replace('/<img/i', '<img loading="lazy" decoding="async"', $tag, 1);
+            }
+            return $tag;
+        }, $html);
+    }
+
     // ==================== 转换核心 ====================
 
     private array $toc = [];

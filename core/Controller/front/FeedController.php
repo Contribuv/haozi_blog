@@ -37,6 +37,8 @@ class FeedController extends BaseController
         $xml .= "  </channel>\n</rss>\n";
 
         header('Content-Type: application/rss+xml; charset=utf-8');
+        // 订阅器抓取频繁，允许客户端/代理缓存 10 分钟，避免每次全量生成
+        header('Cache-Control: public, max-age=600');
         echo $xml;
         exit;
     }

@@ -211,17 +211,20 @@ class ProjectSync
                 self::write($st);
                 return self::read();
             }
-            $gh = Github::fetchRepo($url);
+            // 一次 fetchProject 拿齐 repo 元数据 + README（repo API 每项目只打一次），
+            // repo 数据同时喂给 save，避免同步链路对同一仓库重复请求
+            $fp = Github::fetchProject($url);
+            $gh = $fp['gh'];
             if (!$gh) {
                 $st['failed']++;
             } else {
-                // 拉 README 并本地化图片（写磁盘缓存）+ 更新项目实时数据
-                ProjectCache::put($slug, Github::fetchProject($url));
+                // README 已含图片本地化 + 外链代理 + 代理预热（写磁盘缓存）
+                ProjectCache::put($slug, $fp);
                 Project::save([
                     'url' => $gh['url'],
                     'sort_order' => (int) ($p['sort_order'] ?? 0),
                     'featured' => !empty($p['featured']) ? '1' : '',
-                ], $id, true);
+                ], $id, true, $gh);
                 $st['ok']++;
             }
         } catch (\Throwable $e) {

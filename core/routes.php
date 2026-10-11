@@ -28,6 +28,7 @@ return [
         ['GET', '/uploads/<path:filename>', 'front/AssetController@upload'],
         ['GET', '/share-thumb/<path:filename>', 'front/AssetController@shareThumb'],
         ['GET', '/avatar/<key>/<int:size>.png', 'front/AssetController@avatar'],
+        ['GET', '/readme-img', 'front/AssetController@readmeImage'],
         ['GET', '/themes/<path:filename>', 'front/AssetController@themeStatic'],
         ['GET', '/static/<path:filename>', 'front/AssetController@static'],
     ],

@@ -170,6 +170,19 @@ class Github
         // 图片本地化：同仓库 raw 图片下载到 uploads/projects/<slug>/readme/，前台零 GitHub 请求
         if ($html !== null && $html !== '') {
             $html = self::localizeReadmeImages($html, $slug);
+            // 本地化后仍有外链（shields.io 徽章等）→ 走站内代理，避免前台被墙卡死
+            $html = Markdown::proxyExternalImages($html);
+            // 预热代理缓存：此处还在同步进程（可容忍网络等待），前台 /readme-img 便只读本地、永不联网
+            if (preg_match_all('#/readme-img\?u=([A-Za-z0-9\-_]+)#', $html, $imgs)) {
+                // 总预算 5 秒：后台加项目走的是 admin 请求线程，外网不通时不能拖到超时
+                $deadline = microtime(true) + 5.0;
+                foreach (array_unique($imgs[1]) as $b64) {
+                    if (microtime(true) > $deadline) {
+                        break;
+                    }
+                    \Blog\Controller\front\AssetController::warmReadmeImage($b64);
+                }
+            }
         }
 
         return [
