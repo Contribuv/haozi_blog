@@ -142,9 +142,106 @@ class AssetController extends BaseController
         }
         $file = self::cacheFile($url);
         if (!is_file($file)) {
+            // shields.io 徽章就地渲染：该图源国内连通性极差，同步预热经常整体失败，
+            // 与其赌网络，不如按 URL 规则本地生成同款 SVG —— 零外网依赖，必定可见
+            $badge = self::renderBadgeSvg($url);
+            if ($badge !== null) {
+                $this->serveImageBytes($badge, self::README_IMG_TTL);
+            }
+            // 其余外链图：本次 404，响应后异步预热自愈（下次刷新可见），与头像同一口径
+            $this->warmReadmeImageLater($file, $url);
             $this->abort404();
         }
         $this->serveImageBytes((string) file_get_contents($file), self::README_IMG_TTL);
+    }
+
+    /**
+     * 响应结束后异步预热代理缓存：前台线程绝不 curl 外网。
+     * 失败写 1 小时 fail 标记，避免图源故障时每个访客请求都空跑一次。
+     */
+    private function warmReadmeImageLater(string $file, string $url): void
+    {
+        $fail = $file . '.fail';
+        if (is_file($fail) && (time() - filemtime($fail)) < 3600) {
+            return;
+        }
+        $b64 = rtrim(strtr(base64_encode($url), '+/', '-_'), '=');
+        register_shutdown_function(static function () use ($file, $fail, $b64): void {
+            if (function_exists('fastcgi_finish_request')) {
+                @set_time_limit(0);
+                @fastcgi_finish_request();
+            }
+            self::warmReadmeImage($b64);
+            if (is_file($file)) {
+                @unlink($fail);
+            } else {
+                @touch($fail);
+            }
+        });
+    }
+
+    /** 仅认 shields.io 的 /badge/ 路径；其余外链返回 null 交回网络预热 */
+    private static function renderBadgeSvg(string $url): ?string
+    {
+        $p = parse_url($url);
+        if (!is_array($p)) {
+            return null;
+        }
+        $host = strtolower((string) ($p['host'] ?? ''));
+        if ($host !== 'img.shields.io' && $host !== 'shields.io') {
+            return null;
+        }
+        if (!preg_match('#^/badge/(.+)$#', (string) ($p['path'] ?? ''), $m)) {
+            return null;
+        }
+        // shields 路径语法：<label>-<message>-<color>，末段恒为颜色；_ 代表空格
+        $parts = explode('-', $m[1]);
+        $rawColor = strtolower((string) array_pop($parts));
+        $named = [
+            'brightgreen' => '#4c1', 'green' => '#4c1', 'yellowgreen' => '#a3c51c',
+            'yellow' => '#dfb317', 'orange' => '#fe7d37', 'red' => '#e05d44',
+            'blue' => '#007ec6', 'lightgrey' => '#9f9f9f', 'grey' => '#555', 'gray' => '#555',
+            'success' => '#4c1', 'important' => '#fe7d37', 'critical' => '#e05d44',
+            'informational' => '#007ec6', 'inactive' => '#9f9f9f',
+        ];
+        if (isset($named[$rawColor])) {
+            $color = $named[$rawColor];
+        } elseif (preg_match('/^[0-9a-f]{3}([0-9a-f]{3})?$/', $rawColor)) {
+            $color = '#' . $rawColor;
+        } else {
+            return null; // 不是标准 badge 语法，交回网络预热
+        }
+        $label = count($parts) >= 2 ? (string) array_shift($parts) : '';
+        $msg = implode('-', $parts);
+        $label = self::xmlText($label);
+        $msg = self::xmlText($msg);
+
+        $fs = 11.0;
+        $labelW = $label === '' ? 0.0 : strlen($label) * 7.2 + 10;
+        $msgW = strlen($msg) * 7.2 + 10;
+        $w = round($labelW + $msgW, 1);
+        $labelX = round($labelW / 2, 1);
+        $msgX = round($labelW + $msgW / 2, 1);
+        $ys = (string) (int) round($fs + 3.4);
+        $aria = self::xmlText(trim($label . ': ' . $msg, ': '));
+
+        return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $w . '" height="20" role="img" aria-label="' . $aria . '">'
+            . '<clipPath id="r"><rect width="' . $w . '" height="20" rx="3" fill="#fff"/></clipPath>'
+            . '<g clip-path="url(#r)">'
+            . '<rect width="' . round($labelW, 1) . '" height="20" fill="#555"/>'
+            . '<rect x="' . round($labelW, 1) . '" width="' . round($msgW, 1) . '" height="20" fill="' . $color . '"/>'
+            . '</g>'
+            . '<g fill="#fff" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="' . $fs . '" text-anchor="middle">'
+            . ($label === '' ? '' : '<text x="' . $labelX . '" y="' . $ys . '">' . $label . '</text>')
+            . '<text x="' . $msgX . '" y="' . $ys . '">' . $msg . '</text>'
+            . '</g></svg>';
+    }
+
+    /** 徽章文案转义 + 下划线还原为空格（shields 语法） */
+    private static function xmlText(string $s): string
+    {
+        $s = str_replace('_', ' ', rawurldecode($s));
+        return htmlspecialchars($s, ENT_QUOTES | ENT_XML1, 'UTF-8');
     }
 
     /** 代理缓存文件路径：md5 定名，键恒为 32 位十六进制，无法路径穿越 */

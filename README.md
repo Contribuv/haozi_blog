@@ -463,7 +463,17 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.4.0**
+当前版本：**2.4.1**
+
+### 从 2.4.0 升级到 2.4.1
+
+修复项目页 README 的 shields.io 徽章全部不显示：
+
+外链图片走站内代理 `/readme-img`，按「前台只读磁盘缓存、绝不联网」的设计，缓存由后台同步期预热写入。但 `img.shields.io` 在国内连通性极差，逐张预热常整体失败，前台又永不自愈，于是整排徽章 404。
+
+现改为：`img.shields.io`（含 `shields.io`）的 `/badge/` 地址**就地按 URL 规则生成同款 SVG**（左灰右彩、圆角、11px Verdana，命名色与 3/6 位 hex 均支持），零外网依赖、必定可见；其余外链图未命中时仍返回 404，改由响应后异步预热自愈，与头像代理同一口径。
+
+> 只改 `core/Controller/front/AssetController.php` 一个文件，无数据库与 nginx 配置变更，**也无需重新同步项目** —— 页面里的 `src` 本就是 `/readme-img?u=...`。
 
 ### 从 2.3.2 升级到 2.4.0
 
