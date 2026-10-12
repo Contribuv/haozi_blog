@@ -138,6 +138,8 @@
         if (!confirm('确定删除选中的 ' + n + ' 个项目？此操作不可恢复。')) { e.preventDefault(); return; }
         document.getElementById('bulkAction').value = action;
     });
+
+    update(); // 初始化计数：严格模式下 update 声明在 if 块内，只能在块内调用
     }
 
     // ── 后台同步：AJAX 提交 + 原地轮询进度 ──
@@ -217,8 +219,6 @@
 
     // 页面加载时若已有同步在后台跑（他人触发/刷新页面），直接接续轮询
     poll();
-
-    if (form) { update(); }
 })();
 </script>
 {% endblock %}

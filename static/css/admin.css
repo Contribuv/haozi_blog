@@ -105,7 +105,6 @@ svg { vertical-align: -3px; flex: none; }
 .me-2 { margin-right: var(--sp-2); }
 .ms-auto { margin-left: auto; }
 .icon-sm svg, svg.icon-sm { width: 15px; height: 15px; }
-.hidden { display: none; }
 .d-inline { display: inline; }
 /* 表格列宽（模板 <th> 静态宽度） */
 .w-13 { width: 13%; }
@@ -1693,3 +1692,13 @@ button.link-plain { background: none; border: none; cursor: pointer; color: inhe
   #svc-table td { flex-direction: column; align-items: stretch; text-align: left; gap: 4px; }
   #svc-table td .input-text { width: 100%; }
 }
+
+/* ==========================================================
+   30. 隐藏工具类（置于表末，保证压过后文的组件规则）
+   —— .otp-enabled / .otp-qr-box 等组件自身声明了 display:flex，与 .hidden
+      同为单类特异性却在文件更后面，会把 .hidden 顶掉，于是「未开启」也显示
+      「已启用信息区」。放到末尾即可靠后定义取胜。
+   —— 不用 !important：部分显隐由 JS 直接设内联 display（如二维码框生成后
+      qrBox.style.display='flex'），内联样式必须能覆盖工具类。
+   ========================================================== */
+.hidden { display: none; }

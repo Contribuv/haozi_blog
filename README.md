@@ -463,7 +463,17 @@ rm -rf storage/cache/templates/*
 
 ## 版本
 
-当前版本：**2.6.3**
+当前版本：**2.6.4**
+
+### 从 2.6.3 升级到 2.6.4
+
+修复后台隐藏元素误显示与项目页脚本报错
+
+- 修复 `/admin/settings` 的「已启用信息区」、`/admin/projects` 的同步进度条在未触发时仍显示的问题：`.hidden` 工具类被同特异性、后定义的组件规则（`.flash-msg`、`.otp-enabled`、`.otp-qr-box` 均声明了 `display: flex`）覆盖，现将 `.hidden` 移至 admin.css 末尾，靠后定义取胜；不用 `!important`，以免压死 JS 直接设置的内联 `display`。
+- 修复 `/admin/projects` 控制台 `Uncaught ReferenceError: update is not defined`：严格模式下 `function update()` 声明在 `if (form) { … }` 块内，块外不可见；初始化调用改置于块内。
+- 补全 `themes/tech/theme.css` 中 `.tech-related-card-title` 缺少的 `line-clamp` 标准属性，与同文件另两处写法保持一致。
+
+
 
 ### 从 2.6.2 升级到 2.6.3
 
