@@ -31,6 +31,16 @@
         </div>
     </header>
 
+    <!-- 目录：≥1400px fixed 悬浮右侧；窄屏内联折叠框，显示在标题下方、正文之前 -->
+    {% if toc %}
+    <aside class="tech-toc-sidebar">
+        <details class="tech-toc" open>
+            <summary class="tech-toc-summary">目录</summary>
+            <div class="tech-toc-body">{{ toc | safe }}</div>
+        </details>
+    </aside>
+    {% endif %}
+
     <!-- 文章内容 -->
     <div class="tech-post-body markdown-body">
         {{ content | safe }}
@@ -63,16 +73,6 @@
         </div>
     </footer>
 </article>
-
-<!-- 目录：≥1400px fixed 悬浮右侧，窄屏内联折叠框 -->
-{% if toc %}
-<aside class="tech-toc-sidebar">
-    <details class="tech-toc" open>
-        <summary class="tech-toc-summary">目录</summary>
-        <div class="tech-toc-body">{{ toc | safe }}</div>
-    </details>
-</aside>
-{% endif %}
 </div><!-- /.tech-post-layout -->
 
 <!-- 图片灯箱（正文任意图片/视频点击打开，同组连续图轮转） -->

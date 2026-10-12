@@ -550,8 +550,9 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-post-wrap { max-width: 1000px; margin: 0 auto; }
 .tech-post-layout { display: block; }
 
-/* TOC：移动端内联折叠框；≥1400px fixed 悬浮在容器右侧 */
-.tech-toc-sidebar { margin: 0 0 24px; }
+/* TOC：窄屏内联折叠框，位于标题下方、正文之前；上下 24px（与相邻块 margin 折叠取较大值）；
+   ≥1400px 改为 fixed 悬浮在容器右侧，margin 归零且脱离文档流 */
+.tech-toc-sidebar { margin: 24px 0; }
 @media (min-width: 1400px) {
   .tech-toc-sidebar {
     position: fixed;

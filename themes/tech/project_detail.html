@@ -54,6 +54,16 @@
     </section>
     {% endif %}
 
+    <!-- 目录：≥1400px fixed 悬浮右侧；窄屏为折叠框，显示在标题/简介下方、项目文档之前 -->
+    {% if toc %}
+    <aside class="tech-toc-sidebar">
+        <details class="tech-toc" open>
+            <summary class="tech-toc-summary">目录</summary>
+            <div class="tech-toc-body">{{ toc | safe }}</div>
+        </details>
+    </aside>
+    {% endif %}
+
     <!-- 项目文档：全宽单栏（展示管理员后台同步的 GitHub README，前台零 GitHub 请求） -->
     <section class="tech-proj-readme" id="readme">
             <div class="tech-proj-readme-head">
@@ -72,16 +82,6 @@
             </div>
             {% endif %}
     </section>
-
-    <!-- 目录：≥1400px fixed 悬浮右侧，窄屏为折叠框（与文章页同一套结构与样式） -->
-    {% if toc %}
-    <aside class="tech-toc-sidebar">
-        <details class="tech-toc" open>
-            <summary class="tech-toc-summary">目录</summary>
-            <div class="tech-toc-body">{{ toc | safe }}</div>
-        </details>
-    </aside>
-    {% endif %}
 
     <!-- 评论区（与文章页共用同一片段，表单指向项目评论接口；关闭评论时整块不显示） -->
     {% if comments_enabled %}
