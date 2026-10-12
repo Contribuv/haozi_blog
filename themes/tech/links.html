@@ -13,7 +13,7 @@
         <a href="{{ link.url }}" target="_blank" rel="noopener" class="tech-link-card">
             {% if link.avatar %}
             <img class="tech-link-avatar" src="{{ link.avatar }}" alt="{{ link.name }}" loading="lazy" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
-            <span class="tech-link-avatar" style="display: none;">{{ link.name[0] | upper }}</span>
+            <span class="tech-link-avatar hidden">{{ link.name[0] | upper }}</span>
             {% else %}
             <span class="tech-link-avatar">{{ link.name[0] | upper }}</span>
             {% endif %}

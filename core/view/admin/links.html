@@ -59,8 +59,8 @@
 {# 单条操作表单定义在批量表单之外：HTML 禁止嵌套 form，否则浏览器丢弃内层 action，
    按钮归属外层 bulk-form-pending，提交到批量接口并报「无效的批量操作」。 #}
 {% for l in pending %}
-    <form id="approveForm{{ l.id }}" method="POST" action="{{ url_for('admin_link_approve', link_id=l.id) }}" style="display:none"></form>
-    <form id="rejectForm{{ l.id }}" method="POST" action="{{ url_for('admin_link_reject', link_id=l.id) }}" style="display:none" onsubmit="return confirm('拒绝并隐藏链接 {{ l.name }} ？')"></form>
+    <form id="approveForm{{ l.id }}" method="POST" action="{{ url_for('admin_link_approve', link_id=l.id) }}" class="hidden"></form>
+    <form id="rejectForm{{ l.id }}" method="POST" action="{{ url_for('admin_link_reject', link_id=l.id) }}" class="hidden" onsubmit="return confirm('拒绝并隐藏链接 {{ l.name }} ？')"></form>
 {% endfor %}
 </div>
 {% endif %}
@@ -116,7 +116,7 @@
 {# 单条删除表单定义在批量表单之外：HTML 禁止嵌套 form，否则浏览器丢弃内层 action，
    按钮归属外层 bulk-form-links，提交到批量接口并报「无效的批量操作」。 #}
 {% for l in links %}
-    <form id="delForm{{ l.id }}" method="POST" action="{{ url_for('admin_link_delete', link_id=l.id) }}" style="display:none" onsubmit="return confirm('确定删除链接 {{ l.name }} ？')"></form>
+    <form id="delForm{{ l.id }}" method="POST" action="{{ url_for('admin_link_delete', link_id=l.id) }}" class="hidden" onsubmit="return confirm('确定删除链接 {{ l.name }} ？')"></form>
 {% endfor %}
 </div>
 {% else %}

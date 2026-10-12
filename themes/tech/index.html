@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 {% block title %}{% if current_tag %}{{ current_tag }}{% elif search_query %}搜索: {{ search_query }}{% elif home_title %}{{ home_title }}{% else %}{{ blog_name }}{% endif %}{% endblock %}
 {% block content %}
-<!-- 页面头部（居中 Hero；搜索入口已收纳至导航栏放大镜） -->
+<!-- 页面头部：首页为终端窗口 Hero，标签/搜索结果为居中标题 Hero（搜索入口已收纳至导航栏放大镜） -->
 <div class="tech-page-head tech-page-head--center">
+    {% if current_tag or search_query %}
     <h1 class="tech-page-title">
         {% if current_tag %}标签：{{ current_tag }}
-        {% elif search_query %}搜索：&ldquo;{{ search_query }}&rdquo;
-        {% elif home_title %}{{ home_title }}
-        {% else %}{{ blog_name }}{% endif %}
+        {% else %}搜索：&ldquo;{{ search_query }}&rdquo;{% endif %}
     </h1>
     <p class="tech-page-desc">
         {% if search_query %}找到 {{ total }} 篇相关文章
         {% else %}共 {{ total }} 篇文章 · {{ all_tags|length }} 个标签 · {{ total_categories }} 个分类{% endif %}
     </p>
-    {% if not current_tag and not search_query %}
-    <!-- 首页终端格言：本地句子库，仅首页展示；交互逻辑见 theme.js -->
+    {% else %}
+    <!-- 站点名不再作大标题（导航与页脚已承载），用 sr-only 保留 h1 语义 -->
+    <h1 class="sr-only">{{ home_title or blog_name }}</h1>
+    <p class="tech-page-desc tech-page-desc--mono">共 {{ total }} 篇文章 · {{ all_tags|length }} 个标签 · {{ total_categories }} 个分类</p>
+    <!-- 首页格言：本地句子库，交互逻辑见 theme.js -->
     <div class="tech-quote">
-        <!-- prompt 为人名路径（~/haozi $），避免与导航 / 页脚中的站点名重复；如需自动跟随站点名可改回 {{ blog_name|lower }} -->
-        <span class="tech-quote-prompt" aria-hidden="true">~/haozi $</span>
         <span class="tech-quote-text" id="tech-quote-text"></span>
         <span class="tech-quote-cursor" aria-hidden="true"></span>
         <span class="tech-quote-src" id="tech-quote-src"></span>

@@ -91,9 +91,9 @@
    导致点单条删除报「无效的批量操作」。 #}
 {% for c in comments %}
     {% if c.status == 'pending' %}
-    <form id="approveForm{{ c.id }}" method="POST" action="{{ url_for('admin_comment_approve', comment_id=c.id) }}" style="display:none"></form>
+    <form id="approveForm{{ c.id }}" method="POST" action="{{ url_for('admin_comment_approve', comment_id=c.id) }}" class="hidden"></form>
     {% endif %}
-    <form id="delForm{{ c.id }}" method="POST" action="{{ url_for('admin_comment_delete', comment_id=c.id) }}" style="display:none" onsubmit="return confirm('确定删除这条评论？其全部回复将一并删除')"></form>
+    <form id="delForm{{ c.id }}" method="POST" action="{{ url_for('admin_comment_delete', comment_id=c.id) }}" class="hidden" onsubmit="return confirm('确定删除这条评论？其全部回复将一并删除')"></form>
 {% endfor %}
 </div>
 {% else %}

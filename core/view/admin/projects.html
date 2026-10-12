@@ -10,7 +10,7 @@
     </div>
 </div>
 
-<div id="syncStatusBar" class="flash-msg info" style="display:none">
+<div id="syncStatusBar" class="flash-msg info hidden">
     <div id="syncStatusText"></div>
 </div>
 
@@ -31,13 +31,13 @@
             <tr>
                 <th class="col-check">选择</th>
                 <th class="col-opt col-num">排序</th>
-                <th style="width:16%">项目名</th>
-                <th class="url-cell" style="width:13%">仓库地址</th>
-                <th style="width:20%">描述</th>
-                <th style="width:14%">语言</th>
+                <th class="w-16">项目名</th>
+                <th class="url-cell w-13">仓库地址</th>
+                <th class="w-20">描述</th>
+                <th class="w-14">语言</th>
                 <th class="col-opt col-num">Stars</th>
                 <th class="col-opt col-num">精选</th>
-                <th style="width:16%">操作</th>
+                <th class="w-16">操作</th>
             </tr>
         </thead>
         <tbody>
@@ -89,7 +89,7 @@
        嵌套时浏览器会忽略内层 form 的 action，按钮归属外层批量表单，
        导致点击提交到批量接口并报「无效的批量操作」。同步已改 AJAX 不走表单。 #}
     {% for p in projects %}
-    <form id="delForm{{ p.id }}" method="POST" action="{{ url_for('admin_project_delete', project_id=p.id) }}" style="display:none" onsubmit="return confirm('确定删除项目 {{ p.name }} ？')"></form>
+    <form id="delForm{{ p.id }}" method="POST" action="{{ url_for('admin_project_delete', project_id=p.id) }}" class="hidden" onsubmit="return confirm('确定删除项目 {{ p.name }} ？')"></form>
     {% endfor %}
 </div>
 {% else %}
@@ -156,9 +156,8 @@
 
     function showBar(cls, msg, hideMs) {
         bar.className = 'flash-msg ' + cls;
-        bar.style.display = '';
         text.textContent = msg;
-        if (hideMs) { setTimeout(function () { bar.style.display = 'none'; }, hideMs); }
+        if (hideMs) { setTimeout(function () { bar.classList.add('hidden'); }, hideMs); }
     }
 
     function setSyncBusy(busy) {

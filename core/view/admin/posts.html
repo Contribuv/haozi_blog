@@ -42,7 +42,7 @@
         <thead>
             <tr>
                 <th class="col-check">选择</th>
-                <th style="width:35%">标题</th>
+                <th class="w-35">标题</th>
                 <th>标签</th>
                 <th>状态</th>
                 <th>日期</th>
@@ -96,7 +96,7 @@
 {# 单条删除表单定义在批量表单之外：HTML 禁止嵌套 form，否则浏览器丢弃内层 action，
    按钮归属外层 bulkPosts，提交到批量接口并报「无效的批量操作」。 #}
 {% for post in posts %}
-    <form id="delForm{{ post.id }}" method="POST" action="{{ url_for('admin_post_delete', post_id=post.id) }}" style="display:none" onsubmit="return confirm('确定删除《{{ post.title }}》？此操作不可恢复。')"></form>
+    <form id="delForm{{ post.id }}" method="POST" action="{{ url_for('admin_post_delete', post_id=post.id) }}" class="hidden" onsubmit="return confirm('确定删除《{{ post.title }}》？此操作不可恢复。')"></form>
 {% endfor %}
 </div>
 

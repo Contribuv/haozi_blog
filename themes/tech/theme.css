@@ -305,7 +305,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 /* 首页 / 搜索 / 标签结果：居中极简 Hero（统计并入描述行，无胶囊） */
 .tech-page-head--center {
   text-align: center;
-  padding: 40px 12px 40px;
+  padding: 48px 12px 32px;
   /* 与左对齐子页 .tech-page-head 的 28px 对齐：hero 彩条到列表的距离收窄，
      避免比卡片间距（24px）大一倍以上的空洞感 */
   margin-bottom: 28px;
@@ -325,9 +325,6 @@ html[data-theme-mode="auto"] #theme-toggle::after {
    B. 补宽屏横向空旷：标题/格言字号加大，Hero 在宽屏更有存在感
    移动端（<769px）完全维持原状。 */
 @media (min-width: 769px) {
-  .tech-page-head--center {
-    padding: 36px 12px 28px;
-  }
   .tech-page-head--center .tech-page-title {
     font-size: 40px;
   }
@@ -343,11 +340,6 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
   gap: 4px 10px; margin-top: 28px; min-height: 26px;
   font-size: 15px; line-height: 1.9; color: var(--text);padding-bottom: 10px;
-}
-.tech-quote-prompt {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
-  font-size: 13px; font-weight: 600; letter-spacing: .02em;
-  color: var(--accent); user-select: none; white-space: nowrap;
 }
 .tech-quote-text { word-break: break-word; }
 .tech-quote-src { font-size: 13px; color: var(--text-secondary); }
@@ -367,6 +359,13 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-quote-refresh svg { width: 14px; height: 14px; transition: transform .28s ease; }
 .tech-quote-refresh:hover { color: var(--accent); background: var(--bg-subtle); }
 .tech-quote-refresh.spin svg { transform: rotate(360deg); }
+
+/* ── 首页 Hero：极简无卡（一行统计 + 居中格言） ── */
+/* 统计行等宽：保留终端质感，但不放假命令 */
+.tech-page-desc--mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  letter-spacing: .01em;
+}
 
 /* ── 全局搜索：导航下拉面板（入口为导航栏放大镜） ── */
 .tech-search-layer {
@@ -538,18 +537,48 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-empty h3 { font-size: 18px; color: var(--text); margin: 0 0 6px; }
 .tech-empty p { margin: 0; font-size: 14px; }
 
+/* ── 阅读进度条：fixed 顶部细条，随滚动填充 ── */
+.tech-reading-progress {
+  position: fixed; top: 0; left: 0; z-index: 200;
+  width: 0; height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--hl-title));
+  transition: width .1s linear;
+}
+
 /* ── 文章详情 ── */
-.tech-post-header { margin-bottom: 20px; }
-.tech-post-title-lg { font-size: 28px; font-weight: 700; line-height: 1.4; margin: 0 0 12px; }
+/* 容器与 nav 同宽 1000px，正文占满容器宽度 */
+.tech-post-wrap { max-width: 1000px; margin: 0 auto; }
+.tech-post-layout { display: block; }
+
+/* TOC：移动端内联折叠框；≥1400px fixed 悬浮在容器右侧 */
+.tech-toc-sidebar { margin: 0 0 24px; }
+@media (min-width: 1400px) {
+  .tech-toc-sidebar {
+    position: fixed;
+    top: 80px;
+    left: calc(50% + 520px);
+    width: 180px;
+    margin: 0;
+  }
+  .tech-toc-body { max-height: calc(100vh - 160px); }
+  /* 宽屏：summary 退化为标题，去掉折叠箭头和可点击感 */
+  .tech-toc-summary { cursor: default; }
+  .tech-toc-summary::after { display: none; }
+}
+
+.tech-post-header { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+.tech-post-title-lg { font-size: 28px; font-weight: 700; line-height: 1.4; margin: 0 0 14px; }
 .tech-post-meta-lg {
-  display: flex; flex-wrap: wrap; gap: 6px 18px;
-  font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;
+  display: flex; flex-wrap: wrap; gap: 6px 16px;
+  font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;
 }
 .tech-post-tags-lg { display: flex; flex-wrap: wrap; gap: 6px; }
 
-/* 目录下拉 */
+/* 锚点定位留出 sticky nav（56px）+ 呼吸空间，防止点 TOC 后标题被导航遮住 */
+.tech-post-body :is(h1, h2, h3, h4, h5, h6) { scroll-margin-top: 72px; }
+
+/* 目录 */
 .tech-toc {
-  margin: 0 0 24px;
   border: 1px solid var(--border); border-radius: 8px;
   background: var(--bg-subtle);
 }
@@ -566,11 +595,14 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 }
 .tech-toc[open] .tech-toc-summary::after { transform: rotate(-135deg); margin-top: 4px; }
 .tech-toc-body { padding: 0 14px 12px; max-height: 60vh; overflow-y: auto; }
+@media (min-width: 1024px) {
+  .tech-toc-body { max-height: calc(100vh - 160px); }
+}
 .tech-toc-body .toc { margin: 0; }
 .tech-toc-body ul { list-style: none; margin: 0; padding: 0; }
 .tech-toc-body ul ul { padding-left: 16px; }
 .tech-toc-body a {
-  display: block; padding: 3px 0; font-size: 14px; line-height: 1.6;
+  display: block; padding: 3px 0; font-size: 13px; line-height: 1.6;
   color: var(--text-secondary); text-decoration: none;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
@@ -580,11 +612,10 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   border-left: 2px solid var(--accent); padding-left: 8px; margin-left: -10px;
 }
 
-/* 正文：容器全宽（公众号式节奏：行内紧、段间松；复合选择器压过 markdown-body 基准） */
+/* 正文：16px / 1.75 行高；中文不加字间距（等宽字符加间距反显松散，用户反馈） */
 .tech-post-body,
 .tech-post-body.markdown-body {
-  font-size: 15.5px; line-height: 1.75; word-wrap: break-word;
-  letter-spacing: 0.02em;
+  font-size: 16px; line-height: 1.75; word-wrap: break-word;
 }
 .tech-post-body h1, .tech-post-body h2, .tech-post-body h3,
 .tech-post-body h4, .tech-post-body h5, .tech-post-body h6,
@@ -593,8 +624,8 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-post-body.markdown-body h5, .tech-post-body.markdown-body h6 {
   font-weight: 700; line-height: 1.4; margin: 28px 0 14px;
 }
-/* 桌面标题梯度：26/22/19/17/16.5/16，均高于正文 15.5px；字重 700 压过 strong 600 */
-.tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 26px; }
+/* 桌面标题梯度：24/22/19/17/16.5/16，均高于正文 16px；h1 无边框区别于 h2 */
+.tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 24px; }
 .tech-post-body h2, .tech-post-body.markdown-body h2 {
   font-size: 22px; padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -773,8 +804,13 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 /* ── 文章底部操作 ── */
 .tech-post-footer {
   margin: 32px 0 0;
-  display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
   padding-top: 20px; border-top: 1px solid var(--border);
+}
+.tech-post-tags-bottom {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+}
+.tech-post-actions {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
 }
 .tech-btn {
   display: inline-flex; align-items: center; gap: 6px;
@@ -787,7 +823,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-btn:hover { border-color: var(--accent); color: var(--accent); }
 .tech-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tech-btn-primary:hover { filter: brightness(1.1); color: #fff; }
-.tech-license { font-size: 13px; color: var(--text-secondary); }
+.tech-license { font-size: 13px; color: var(--text-secondary); margin: 14px 0 0; }
 
 /* ── 轻提示 toast（分享/复制反馈，全站可用） ── */
 .tech-toast {
@@ -814,8 +850,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 /* ── 相关文章 ── */
 .tech-related { margin: 40px 0 0; }
 .tech-related-title { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
-/* 精选推荐区：底部对齐页头 --center 的分隔线（细 border + 居中渐变彩条），
-   与下方「全部文章」列表分区；间距取卡片间距 24px，避免彩条贴线过挤 */
+/* 精选推荐区：底部对齐页头 --center 的分隔线（细 border + 居中渐变彩条） */
 .tech-featured {
   position: relative;
   margin-bottom: 24px;
@@ -827,11 +862,24 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   bottom: -1px; width: 64px; height: 3px; border-radius: 2px;
   background: linear-gradient(90deg, var(--accent), var(--hl-title));
 }
-.tech-related-list { list-style: none; margin: 0; padding: 0; }
-.tech-related-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
-.tech-related-item a { color: var(--text); text-decoration: none; font-size: 15px; }
-.tech-related-item a:hover { color: var(--accent); }
-.tech-related-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+/* 卡片网格 */
+.tech-related-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
+}
+.tech-related-card {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 14px 16px;
+  border: 1px solid var(--border); border-radius: 8px;
+  text-decoration: none; color: var(--text);
+  transition: border-color .15s, background .15s;
+}
+.tech-related-card:hover { border-color: var(--accent); background: var(--bg-subtle); }
+.tech-related-card-title {
+  font-size: 14px; font-weight: 600; line-height: 1.5;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.tech-related-card-meta { font-size: 12px; color: var(--text-secondary); }
 
 /* 视觉隐藏但保留给读屏：补全 heading 层级用（列表前 h2） */
 .sr-only {
@@ -839,6 +887,10 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
+
+.tech-share-row { display: flex; gap: 10px; }
+
+.tech-about-empty { color: var(--text-secondary); }
 
 /* ── 评论 ── */
 /* hidden 属性必须强制隐藏：.tech-comment-form-row 的 display:flex 会覆盖 UA 的 [hidden] 样式 */
@@ -1310,8 +1362,8 @@ html { touch-action: manipulation; }
     /* 中文正文不加字间距：0.03em 在 16px 下约 0.5px/字，移动端视觉明显发「散」（用户反馈） */
     font-size: 16px; line-height: 1.6; letter-spacing: normal;
   }
-  /* 移动标题梯度：23/20/18/17/16.5/16，均高于正文 16px */
-  .tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 23px; }
+  /* 移动标题梯度：22/20/18/17/16.5/16，h1 与 h2 有区分度 */
+  .tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 22px; }
   .tech-post-body h2, .tech-post-body.markdown-body h2 {
     font-size: 20px; padding-bottom: 7px;
   }
@@ -1500,3 +1552,6 @@ html { touch-action: manipulation; }
   .lightbox-prev { left: 8px; }
   .lightbox-next { right: 8px; }
 }
+
+/* 通用隐藏类：置于末尾以按顺序压过后文同特异度的 display 声明（如 .tech-link-avatar） */
+.hidden { display: none; }

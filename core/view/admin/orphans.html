@@ -92,7 +92,7 @@
 </div>
 
 <!-- 全部清理完后显示 -->
-<div class="empty-state" id="emptyState" style="display:none">
+<div class="empty-state hidden" id="emptyState">
     {{ icon('check-circle', 28) | safe }}
     <p class="text-muted">清理完成，当前没有孤儿文件了。</p>
 </div>
@@ -335,7 +335,7 @@
             if (!rows.length) {
                 /* 一个不剩：隐藏筛选区与卡片，显示完成态 */
                 document.querySelector('.orphan-filter-bar').style.display = 'none';
-                document.getElementById('emptyState').style.display = '';
+                document.getElementById('emptyState').classList.remove('hidden');
                 var card = deleteBtn.closest('.card');
                 if (card) card.style.display = 'none';
             } else {

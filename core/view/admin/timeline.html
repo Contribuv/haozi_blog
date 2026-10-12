@@ -27,9 +27,9 @@
             <tr>
                 <th class="col-check">选择</th>
                 <th class="col-num">排序</th>
-                <th style="width:14%">日期</th>
-                <th style="width:45%">内容</th>
-                <th style="width:25%">操作</th>
+                <th class="w-14">日期</th>
+                <th class="w-45">内容</th>
+                <th class="w-25">操作</th>
             </tr>
         </thead>
         <tbody>
@@ -56,7 +56,7 @@
 {# 单条删除表单定义在批量表单之外：HTML 禁止嵌套 form，否则浏览器丢弃内层 action，
    按钮归属外层 bulkTimeline，提交到批量接口并报「无效的批量操作」。 #}
 {% for it in items %}
-    <form id="delForm{{ it.id }}" method="POST" action="{{ url_for('admin_timeline_delete', item_id=it.id) }}" style="display:none" onsubmit="return confirm('确定删除这条历程？')"></form>
+    <form id="delForm{{ it.id }}" method="POST" action="{{ url_for('admin_timeline_delete', item_id=it.id) }}" class="hidden" onsubmit="return confirm('确定删除这条历程？')"></form>
 {% endfor %}
 </div>
 {% else %}

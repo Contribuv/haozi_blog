@@ -15,7 +15,7 @@ use Blog\Request;
 class Context
 {
     /** 程序版本号（PHP 版独立版本线） */
-    public const VERSION = '2.4.1';
+    public const VERSION = '2.5.0';
 
     /** 可开关的导航项：(配置 key 后缀, 显示名, 链接)；首页与写作入口为固定项 */
     public const NAV_PAGES = [
@@ -72,6 +72,8 @@ class Context
             'nav_pages' => $navPages,
             'nav_all' => $navAll,
             'version' => self::VERSION,
+            // 主题资源缓存版本（theme.css/theme.js 最新 mtime）：文件一改 URL 即变，绕开 7 天强缓存
+            'theme_asset_ver' => self::themeAssetVer(),
             'now_year' => (int) date('Y'),
             // 全量设置键值（模板中 config.get('xxx', '') 读取，等价 Flask 的 app.config）
             'config' => Settings::all(),

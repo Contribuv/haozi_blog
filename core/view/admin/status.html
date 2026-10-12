@@ -1,36 +1,7 @@
 {% extends "admin/base.html" %}
 {% block admin_title %}服务时效{% endblock %}
 
-{% block admin_head %}
-<style>
-.svc-status { display: inline-flex; align-items: center; gap: 4px; }
-.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
-.dot-ok { background: #22c55e; }
-.dot-down { background: #ef4444; }
-.dot-none { background: #9ca3af; }
-/* 同步按钮行：按钮与提示间距、窄屏自动换行 */
-.test-row { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); flex-wrap: wrap; }
-.button-tip { font-size: var(--fz-xs); color: var(--text-tertiary); line-height: 1.4; }
-/* 云厂商分组分隔线：与主题间距/颜色统一，替换硬编码内联样式 */
-.divider { margin: var(--sp-5) 0; border: none; border-top: 1px solid var(--border); }
-/* 密钥/密码明文切换 */
-.pwd-wrap { position: relative; }
-.pwd-wrap .input-text { padding-right: 44px; }
-.pwd-toggle {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; padding: 0;
-  background: transparent; border: none; border-radius: var(--r);
-  color: var(--text-tertiary); cursor: pointer; transition: color var(--transition);
-}
-.pwd-toggle:hover { color: var(--text); background: var(--bg-hover); }
-/* 移动端：监控表走全局卡片化；td 竖排（标签在上、内容在下），输入框撑满 */
-@media (max-width: 768px) {
-  #svc-table td { flex-direction: column; align-items: stretch; text-align: left; gap: 4px; }
-  #svc-table td .input-text { width: 100%; }
-}
-</style>
-{% endblock %}
+{% block admin_head %}{% endblock %}
 
 {% block admin_content %}
 <div class="page-header">
@@ -53,7 +24,7 @@
                        value="{{ config.get('aliyun_access_secret', '') }}" placeholder="AccessKey Secret" autocomplete="off">
                 <button type="button" class="pwd-toggle" data-pwd-toggle="aliyun-access-secret" aria-label="显示/隐藏密钥" tabindex="-1">
                     <span class="pwd-icon-show">{{ icon('eye', 16) | safe }}</span>
-                    <span class="pwd-icon-hide" style="display:none">{{ icon('eye-off', 16) | safe }}</span>
+                    <span class="pwd-icon-hide hidden">{{ icon('eye-off', 16) | safe }}</span>
                 </button>
             </div>
         </div>
@@ -102,7 +73,7 @@
                        value="{{ config.get('tencent_secret_key', '') }}" placeholder="SecretKey" autocomplete="off">
                 <button type="button" class="pwd-toggle" data-pwd-toggle="tencent-secret-key" aria-label="显示/隐藏密钥" tabindex="-1">
                     <span class="pwd-icon-show">{{ icon('eye', 16) | safe }}</span>
-                    <span class="pwd-icon-hide" style="display:none">{{ icon('eye-off', 16) | safe }}</span>
+                    <span class="pwd-icon-hide hidden">{{ icon('eye-off', 16) | safe }}</span>
                 </button>
             </div>
         </div>
@@ -191,8 +162,8 @@
             input.type = show ? 'text' : 'password';
             var showEl = this.querySelector('.pwd-icon-show');
             var hideEl = this.querySelector('.pwd-icon-hide');
-            if (show) { if (showEl) showEl.style.display = 'none'; if (hideEl) hideEl.style.display = ''; }
-            else { if (showEl) showEl.style.display = ''; if (hideEl) hideEl.style.display = 'none'; }
+            if (show) { if (showEl) showEl.classList.add('hidden'); if (hideEl) hideEl.classList.remove('hidden'); }
+            else { if (showEl) showEl.classList.remove('hidden'); if (hideEl) hideEl.classList.add('hidden'); }
             input.focus();
         });
     });

@@ -19,7 +19,7 @@
             </div>
             <div class="form-group">
                 <!-- Vditor 挂载点；隐藏 textarea 用于表单提交与初始值 -->
-                <textarea name="content" id="content" style="display:none;">{{ post.content if post else '' }}</textarea>
+                <textarea name="content" id="content" class="hidden">{{ post.content if post else '' }}</textarea>
                 <div id="editor"></div>
             </div>
         </div>

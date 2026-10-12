@@ -105,6 +105,17 @@ svg { vertical-align: -3px; flex: none; }
 .me-2 { margin-right: var(--sp-2); }
 .ms-auto { margin-left: auto; }
 .icon-sm svg, svg.icon-sm { width: 15px; height: 15px; }
+.hidden { display: none; }
+.d-inline { display: inline; }
+/* 表格列宽（模板 <th> 静态宽度） */
+.w-13 { width: 13%; }
+.w-14 { width: 14%; }
+.w-16 { width: 16%; }
+.w-20 { width: 20%; }
+.w-22 { width: 22%; }
+.w-25 { width: 25%; }
+.w-35 { width: 35%; }
+.w-45 { width: 45%; }
 
 /* ─────────── 3. 应用布局骨架 ─────────── */
 .admin-app { display: flex; min-height: 100vh; }
@@ -1566,7 +1577,7 @@ body.bulk-on #orphanTable tbody tr { cursor: pointer; }
 /* ── 验证页 / 找回页：提示行（覆盖登录页 .login-hint 桌面端隐藏规则） ── */
 /* 单栏认证页（/admin/otp、/admin/otp/recover）：无品牌侧区，
    覆盖 ≥900px 的双列 grid —— 容器收窄为卡片宽并整体屏幕居中 */
-.login-shell--single { grid-template-columns: 1fr; width: min(480px, 100% - 48px); }
+.login-shell--single { grid-template-columns: 1fr; width: min(480px, 100% - 48px); min-height: 100vh; }
 .login-hint.otp-hint-row,
 .login-hint.otp-login-hint {
   display: flex !important;
@@ -1581,6 +1592,14 @@ body.bulk-on #orphanTable tbody tr { cursor: pointer; }
   transition: color var(--transition);
 }
 .link-plain:hover { color: var(--accent-hover); }
+/* <button> 上的链接样式复位（模板原用内联属性） */
+button.link-plain { background: none; border: none; cursor: pointer; color: inherit; padding: 0; }
+/* 单栏认证页辅助行：重新发送 / 返回上一层 / 登录页忘记密码 */
+.auth-actions { text-align: center; margin-top: 14px; }
+.auth-back { margin-top: 14px; }
+.auth-forgot { text-align: center; margin-bottom: 18px; }
+/* 邮箱验证码输入：等宽大字距 */
+.input-code { letter-spacing: 6px; text-indent: 6px; }
 .otp-hint-row { flex-wrap: wrap; }
 .otp-hint-row code {
   font-family: var(--font-mono);
@@ -1632,3 +1651,33 @@ body.bulk-on #orphanTable tbody tr { cursor: pointer; }
 .vditor-reset a[href$=".py"]   { --doc-icon: url(/static/icons/py.svg); }
 .vditor-reset a[href$=".js"]   { --doc-icon: url(/static/icons/js.svg); }
 .vditor-reset a[href$=".json"] { --doc-icon: url(/static/icons/json.svg); }
+
+/* ==========================================================
+   29. 服务时效页（status）：状态点 / 同步行 / 分隔线 / 密钥切换
+   ========================================================== */
+.svc-status { display: inline-flex; align-items: center; gap: 4px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.dot-ok { background: #22c55e; }
+.dot-down { background: #ef4444; }
+.dot-none { background: #9ca3af; }
+/* 同步按钮行：按钮与提示间距、窄屏自动换行 */
+.test-row { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-2); flex-wrap: wrap; }
+.button-tip { font-size: var(--fz-xs); color: var(--text-tertiary); line-height: 1.4; }
+/* 云厂商分组分隔线：与主题间距/颜色统一 */
+.divider { margin: var(--sp-5) 0; border: none; border-top: 1px solid var(--border); }
+/* 密钥/密码明文切换 */
+.pwd-wrap { position: relative; }
+.pwd-wrap .input-text { padding-right: 44px; }
+.pwd-toggle {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; padding: 0;
+  background: transparent; border: none; border-radius: var(--r);
+  color: var(--text-tertiary); cursor: pointer; transition: color var(--transition);
+}
+.pwd-toggle:hover { color: var(--text); background: var(--bg-hover); }
+/* 移动端：监控表走全局卡片化；td 竖排（标签在上、内容在下），输入框撑满 */
+@media (max-width: 768px) {
+  #svc-table td { flex-direction: column; align-items: stretch; text-align: left; gap: 4px; }
+  #svc-table td .input-text { width: 100%; }
+}
