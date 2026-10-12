@@ -799,18 +799,28 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
 .tech-pager-link {
-  display: block; padding: 14px 16px; min-width: 0;
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 16px; min-width: 0;
   border: 1px solid var(--border); border-radius: 8px;
   text-decoration: none; color: var(--text);
 }
-.tech-pager-link:hover { border-color: var(--accent); }
-.tech-pager-dir { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+.tech-pager-link:not(.tech-pager-empty):hover { border-color: var(--accent); }
+/* 方向标用内联 SVG：字符箭头（←/→）在部分字体栈会被回退渲染成彩色 emoji */
+.tech-pager-dir {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 12px; color: var(--text-secondary);
+}
 .tech-pager-title {
   display: block; font-size: 14px; font-weight: 600;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
 .tech-pager-next { text-align: right; }
-.tech-pager-empty { visibility: hidden; }
+.tech-pager-empty {
+  /* 单侧缺失占位：与可点卡片同宽同高同圆角，仅虚线描边+浅字，形似而不可点 */
+  display: flex; align-items: center; justify-content: center;
+  border-style: dashed; color: var(--text-secondary);
+  font-size: 12px; opacity: .7;
+}
 
 /* ── 文章底部操作 ── */
 .tech-post-footer {
@@ -834,7 +844,8 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-btn:hover { border-color: var(--accent); color: var(--accent); }
 .tech-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
 .tech-btn-primary:hover { filter: brightness(1.1); color: #fff; }
-.tech-license { font-size: 13px; color: var(--text-secondary); margin: 14px 0 0; }
+/* 许可文字与按钮组同排，靠右对齐；窄屏折行时恢复左对齐 */
+.tech-license { font-size: 13px; color: var(--text-secondary); margin: 0 0 0 auto; }
 
 /* ── 轻提示 toast（分享/复制反馈，全站可用） ── */
 .tech-toast {
@@ -875,8 +886,9 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 }
 /* 卡片网格 */
 .tech-related-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px;
-}
+    /* 4 篇横排铺满；minmax(0,1fr) 令长标题不可撑破轨道（防溢出容器） */
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px;
+  }
 .tech-related-card {
   display: flex; flex-direction: column; gap: 6px;
   padding: 14px 16px;
@@ -1362,9 +1374,13 @@ html { touch-action: manipulation; }
   .tech-timeline-item { flex-direction: column; align-items: flex-start; gap: 2px; }
   .tech-timeline-date { flex: none; }
   .tech-post-pager { grid-template-columns: 1fr; }
+  /* 相关推荐：窄屏 4 列过挤，降为 2 列两行 */
+  .tech-related-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .tech-pager-next { text-align: left; }
   .tech-form-row { flex-direction: column; gap: 0; }
   .tech-skill-list { grid-template-columns: 1fr; }
+  /* 许可文字折行后不再推右，避免单独悬于右侧 */
+  .tech-license { margin-left: 0; }
 }
 
 /* ≤767px：文章页公众号式排版（手机与平板统一，桌面窄窗预览同样生效）：

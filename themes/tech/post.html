@@ -59,8 +59,8 @@
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
                 返回
             </button>
+            <p class="tech-license" title="署名-非商业性使用-相同方式共享 4.0 国际">本文采用 CC BY-NC-SA 4.0 许可协议</p>
         </div>
-        <p class="tech-license" title="署名-非商业性使用-相同方式共享 4.0 国际">本文采用 CC BY-NC-SA 4.0 许可协议</p>
     </footer>
 </article>
 
@@ -89,19 +89,19 @@
 <nav class="tech-post-pager" aria-label="文章导航">
     {% if prev_post %}
     <a href="/post/{{ prev_post.id }}" class="tech-pager-link">
-        <span class="tech-pager-dir">← 上一篇</span>
+        <span class="tech-pager-dir"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>上一篇</span>
         <span class="tech-pager-title">{{ prev_post.title }}</span>
     </a>
     {% else %}
-    <span class="tech-pager-link tech-pager-empty"></span>
+    <span class="tech-pager-link tech-pager-empty">已是最早文章</span>
     {% endif %}
     {% if next_post %}
     <a href="/post/{{ next_post.id }}" class="tech-pager-link tech-pager-next">
-        <span class="tech-pager-dir">下一篇 →</span>
+        <span class="tech-pager-dir">下一篇<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg></span>
         <span class="tech-pager-title">{{ next_post.title }}</span>
     </a>
     {% else %}
-    <span class="tech-pager-link tech-pager-empty"></span>
+    <span class="tech-pager-link tech-pager-empty tech-pager-next">已是最新文章</span>
     {% endif %}
 </nav>
 {% endif %}

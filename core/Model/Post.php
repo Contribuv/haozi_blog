@@ -120,7 +120,7 @@ class Post extends Model
     }
 
     /** 相关文章：按标签逐个匹配，去重后取前 limit 篇 */
-    public static function related(int $currentId, array $tags, int $limit = 3): array
+    public static function related(int $currentId, array $tags, int $limit = 4): array
     {
         $results = [];
         $seen = [];
