@@ -14,6 +14,7 @@ use Blog\Service\Comments;
 use Blog\Service\Context;
 use Blog\Service\Github;
 use Blog\Service\Lang;
+use Blog\Service\Markdown;
 use Blog\Service\ProjectCache;
 use Blog\Service\ProjectSync;
 
@@ -64,6 +65,8 @@ class ProjectController extends BaseController
             $gh = ['gh' => null, 'readme' => null, 'branch' => '', 'ts' => 0, 'error' => '', 'cached' => false];
         }
         $gh['age_text'] = self::ageText((float) ($gh['ts'] ?? 0));
+        // 目录：README 已在后台同步期预渲染并缓存，此处直接解析其标题生成，前台不重跑 Markdown
+        $toc = Markdown::tocFromHtml((string) ($gh['readme'] ?? ''));
 
         $commentsEnabled = Comments::open();
         $isAdmin = Auth::isAdmin();
@@ -79,6 +82,7 @@ class ProjectController extends BaseController
         $this->render('project_detail.html', [
             'project' => $project,
             'gh' => $gh,
+            'toc' => $toc,
             'comments' => $comments,
             'comment_total' => $commentTotal,
             'comments_enabled' => $commentsEnabled,

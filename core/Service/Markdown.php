@@ -356,12 +356,54 @@ class Markdown
         if (count($this->toc) === 0) {
             return '';
         }
+        $items = [];
+        foreach ($this->toc as $item) {
+            $items[] = [
+                'level' => $item['level'],
+                'slug' => $item['slug'],
+                'text' => $this->inline($item['text']),
+            ];
+        }
+        return self::nestToc($items);
+    }
+
+    /**
+     * 从已渲染 HTML 的标题（h2–h6）提取目录。
+     * README 等正文在后台同步期已预渲染并缓存，前台直接解析其标题即可生成 TOC，无需重新渲染 Markdown。
+     */
+    public static function tocFromHtml(string $html): string
+    {
+        if ($html === '' || !preg_match_all('/<h([2-6])\b[^>]*\bid="([^"]+)"[^>]*>(.*?)<\/h\1>/is', $html, $ms, PREG_SET_ORDER)) {
+            return '';
+        }
+        $items = [];
+        foreach ($ms as $m) {
+            $text = trim(strip_tags($m[3]));
+            if ($text === '') {
+                continue;
+            }
+            $items[] = [
+                'level' => (int) $m[1],
+                'slug' => $m[2],
+                // strip_tags 不解码实体，先解码再统一转义，避免 &amp; 被二次转义成 &amp;amp;
+                'text' => htmlspecialchars(html_entity_decode($text, ENT_QUOTES, 'UTF-8'), ENT_QUOTES),
+            ];
+        }
+        return self::nestToc($items);
+    }
+
+    /** 把 [{level, slug, text}] 按级别嵌套成 ul/li（text 需为可直接输出的 HTML 片段） */
+    private static function nestToc(array $items): string
+    {
+        if ($items === []) {
+            return '';
+        }
         $html = '';
         $stack = [];
         $prev = 2;
-        foreach ($this->toc as $idx => $item) {
+        foreach ($items as $idx => $item) {
             $lv = $item['level'];
-            $li = '<li><a href="#' . $item['slug'] . '">' . $this->inline($item['text']) . '</a>';
+            $li = '<li><a href="#' . $item['slug'] . '">' . $item['text'] . '</a>';
             if ($idx === 0) {
                 $html .= "<ul>\n" . $li;
                 $stack = [$lv];

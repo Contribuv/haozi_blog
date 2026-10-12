@@ -785,6 +785,17 @@ button.tag-chip:hover { border-color: var(--accent); color: var(--accent); backg
 .upgrade-banner-text strong { color: var(--warning); }
 .upgrade-banner .btn { flex: none; }
 
+/* 已是最新 / 尚未探测：横幅转中性色，避免用警示色误导「有新版」 */
+.upgrade-banner.is-idle {
+  background: var(--bg-surface-2);
+  border-color: var(--border);
+}
+.upgrade-banner.is-idle .upgrade-banner-icon {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.upgrade-banner.is-idle .upgrade-banner-text strong { color: var(--text); }
+
 /* ─────────── 19. 文章编辑页布局（post_edit） ─────────── */
 .post-edit-form { display: flex; flex-direction: column; }
 .edit-layout {
@@ -1306,6 +1317,7 @@ html[data-theme-mode="light"] .login-theme-toggle .icon-moon { display: none; }
   .theme-grid, .theme-grid-lg { grid-template-columns: repeat(2, 1fr); gap: var(--sp-3); }
   .upgrade-banner { flex-wrap: wrap; }
   .upgrade-banner .btn { width: 100%; }
+  .upgrade-status-action { width: 100%; }
   .upgrade-body { max-height: 200px; }
   .login-shell { width: min(400px, 100% - 32px); }
 }

@@ -73,6 +73,16 @@
             {% endif %}
     </section>
 
+    <!-- 目录：≥1400px fixed 悬浮右侧，窄屏为折叠框（与文章页同一套结构与样式） -->
+    {% if toc %}
+    <aside class="tech-toc-sidebar">
+        <details class="tech-toc" open>
+            <summary class="tech-toc-summary">目录</summary>
+            <div class="tech-toc-body">{{ toc | safe }}</div>
+        </details>
+    </aside>
+    {% endif %}
+
     <!-- 评论区（与文章页共用同一片段，表单指向项目评论接口；关闭评论时整块不显示） -->
     {% if comments_enabled %}
     {% set comment_section_class = 'tech-comments' %}
@@ -84,6 +94,21 @@
 
 {% block scripts %}
 <script>
+/* TOC：≥1400px fixed 悬浮右侧强制常驻；窄屏折叠框由用户手动开合；
+   监听断点变化，拖动窗口跨过 1400px 时自动同步开合与拦截状态 */
+(function () {
+    'use strict';
+    var tocDetails = document.querySelector('.tech-toc');
+    if (!tocDetails) return;
+    var mqWide = window.matchMedia('(min-width: 1400px)');
+    tocDetails.addEventListener('toggle', function () {
+        if (mqWide.matches && !tocDetails.open) tocDetails.open = true;
+    });
+    var syncToc = function () { tocDetails.open = mqWide.matches; };
+    syncToc();
+    mqWide.addEventListener('change', syncToc);
+})();
+
 /* README 增强：宽表格横向滚动容器 + 代码块复制按钮 + 代码高亮 */
 (function () {
     'use strict';

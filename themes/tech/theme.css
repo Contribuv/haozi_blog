@@ -1224,6 +1224,8 @@ html { touch-action: manipulation; }
 .tech-proj-feedback:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tech-proj-feedback-icon { display: inline-block; vertical-align: middle; }
 .tech-proj-readme-body { min-width: 0; }
+/* 点目录跳转时留出 sticky nav（56px）呼吸空间，与文章页正文一致 */
+.tech-proj-readme-body :is(h1, h2, h3, h4, h5, h6) { scroll-margin-top: 72px; }
 .tech-proj-readme-empty {
   padding: 48px 0; text-align: center;
   font-size: 14px; color: var(--text-secondary);

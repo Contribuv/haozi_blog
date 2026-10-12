@@ -30,19 +30,21 @@ abstract class BaseController
         if (!str_starts_with(ltrim($tpl, '/'), 'admin/')) {
             return [];
         }
-        if (Upgrade::sourcesStale()) {
+        $stale = Upgrade::sourcesStale();
+        if ($stale) {
             Upgrade::scheduleProbe();
         }
         $info = Upgrade::cachedLatest();
+        // upgrade_stale 供仪表盘决定是否在页面加载后主动补一次检测（缓存新鲜时无需重复请求）
         if ($info === null) {
-            return ['upgrade_check' => null, 'upgrade_available' => false];
+            return ['upgrade_check' => null, 'upgrade_available' => false, 'upgrade_stale' => $stale];
         }
         $cur = Upgrade::parseVersion(Context::VERSION);
         // 缓存里的 version 已由 checkLatestVersion 解析为 [int,int,int]，直接用，勿再 (string) 转换
         $latest = is_array($info['version'] ?? null) ? $info['version'] : null;
         $available = $cur !== null && $latest !== null
             && version_compare(Upgrade::versionString($latest), Upgrade::versionString($cur), '>');
-        return ['upgrade_check' => $info, 'upgrade_available' => $available];
+        return ['upgrade_check' => $info, 'upgrade_available' => $available, 'upgrade_stale' => $stale];
     }
 
     /**
