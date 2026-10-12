@@ -560,7 +560,6 @@ html[data-theme-mode="auto"] #theme-toggle::after {
     width: 180px;
     margin: 0;
   }
-  .tech-toc-body { max-height: calc(100vh - 160px); }
   /* 宽屏：summary 退化为标题，去掉折叠箭头和可点击感 */
   .tech-toc-summary { cursor: default; }
   .tech-toc-summary::after { display: none; }
@@ -594,9 +593,21 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   transform: rotate(45deg); transition: transform .2s; margin-top: -4px;
 }
 .tech-toc[open] .tech-toc-summary::after { transform: rotate(-135deg); margin-top: 4px; }
-.tech-toc-body { padding: 0 14px 12px; max-height: 60vh; overflow-y: auto; }
-@media (min-width: 1024px) {
-  .tech-toc-body { max-height: calc(100vh - 160px); }
+/* 目录面板最高只占视口 60%：面板自 top:80 起，用视口比例封顶能保证任何视口高度下
+   底边都留出充足余量，滚动到页脚时不会贴住页脚（此前按 calc(100vh - Npx) 拉长，
+   矮视口下减掉的那点余量根本不够，面板几乎顶到视口底部） */
+.tech-toc-body {
+  padding: 0 14px 12px; max-height: 60vh; overflow-y: auto;
+}
+/* 目录滚动条：系统默认粗条（Windows 约 15px）会把 180px 宽的目录面板撑得很难看
+   注意 Chromium 121+ 只要设了标准属性 scrollbar-width，就会忽略 ::-webkit-scrollbar，故两者分开写 */
+.tech-toc-body::-webkit-scrollbar { width: 6px; }
+.tech-toc-body::-webkit-scrollbar-track { background: transparent; }
+.tech-toc-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.tech-toc-body::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+/* Firefox 不支持 ::-webkit-scrollbar，改用标准属性兜底（thin 细条 + 同色） */
+@supports (-moz-appearance: none) {
+  .tech-toc-body { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
 }
 .tech-toc-body .toc { margin: 0; }
 .tech-toc-body ul { list-style: none; margin: 0; padding: 0; }
