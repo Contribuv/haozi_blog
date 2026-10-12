@@ -6,7 +6,6 @@ namespace Blog\Controller\front;
 use Blog\Controller\BaseController;
 use Blog\Model\Comment;
 use Blog\Model\Project;
-use Blog\Model\Settings;
 use Blog\Response;
 use Blog\Service\Auth;
 use Blog\Service\Avatar;
@@ -132,20 +131,9 @@ class ProjectController extends BaseController
         return (int) ($diff / (86400 * 365)) . ' 年前';
     }
 
-    /** 博主身份条头像 */
+    /** 博主身份条头像（统一走 Avatar::adminUrl，与评论区保持一致） */
     public static function adminAvatar(bool $isAdmin): string
     {
-        if (!$isAdmin) {
-            return '';
-        }
-        $contact = strtolower(trim((string) Settings::get('contact_email', '')));
-        if ($contact === '') {
-            return '';
-        }
-        $qq = Avatar::qqFromEmail($contact);
-        if ($qq !== '') {
-            return '/avatar/q' . $qq . '/40.png';
-        }
-        return Avatar::urls(Avatar::emailHash($contact), '', 40)[0];
+        return $isAdmin ? Avatar::adminUrl(40) : '';
     }
 }

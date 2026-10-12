@@ -227,20 +227,9 @@ class PostController extends BaseController
         return $posts;
     }
 
-    /** 博主身份条头像：QQ 邮箱走 qlogo，其余 Cravatar */
+    /** 博主身份条头像（统一走 Avatar::adminUrl，与评论区保持一致） */
     private function adminAvatar(bool $isAdmin): string
     {
-        if (!$isAdmin) {
-            return '';
-        }
-        $contact = strtolower(trim((string) Settings::get('contact_email', '')));
-        if ($contact === '') {
-            return '';
-        }
-        $qq = Avatar::qqFromEmail($contact);
-        if ($qq !== '') {
-            return '/avatar/q' . $qq . '/40.png';
-        }
-        return Avatar::urls(Avatar::emailHash($contact), '', 40)[0];
+        return $isAdmin ? Avatar::adminUrl(40) : '';
     }
 }

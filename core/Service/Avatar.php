@@ -74,4 +74,18 @@ class Avatar
         $p = PHP_BLOG_ROOT . '/' . $rel;
         return is_file($p);
     }
+
+    /** 博主头像：优先后台「设置」上传的头像，缺失时回退联系邮箱（QQ 走 qlogo，其余 Cravatar） */
+    public static function adminUrl(int $size = 40): string
+    {
+        $cfg = trim((string) Settings::get('avatar', ''));
+        if ($cfg !== '' && self::configuredAvatarExists()) {
+            return $cfg;
+        }
+        $contact = strtolower(trim((string) Settings::get('contact_email', '')));
+        if ($contact === '') {
+            return '';
+        }
+        return self::urls(self::emailHash($contact), self::qqFromEmail($contact), $size)[0];
+    }
 }
