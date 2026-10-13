@@ -6,7 +6,7 @@
 
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4)
 ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1)
-![version](https://img.shields.io/badge/version-2.6.7-blue)
+![version](https://img.shields.io/badge/version-2.6.8-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
@@ -472,7 +472,19 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.7**
+当前版本：**2.6.8**
+
+### 从 2.6.7 升级到 2.6.8
+
+**加固客户端 IP 解析：按可信代理列表采信 XFF**
+
+- 根因：`Request::ip()` 原先只判断「`REMOTE_ADDR` 是否私网」就认定为反代之后并采信 `X-Forwarded-For` / `X-Real-IP`。攻击者直连时也能伪造这两个头，把基于 IP 的登录失败计数与临时锁定的键换成任意值，从而绕过防爆破。
+- 修复：改为**按可信代理列表**判定——仅当 `REMOTE_ADDR` 命中新增配置项 `trusted_proxies` 时才解析代理头，并逐段校验为合法 IP 后才返回；未配置该列表时一律使用 `REMOTE_ADDR`。
+- 配置：`config/config.sample.php` 新增 `trusted_proxies` 段，并逐项补全中文注释。
+- **升级动作**：本版无数据库结构与 nginx 配置变更。若站点部署在反向代理（nginx/CDN）之后，请在 `config/config.php` 补上 `'trusted_proxies' => ['代理机 IP'],`，否则客户端真实 IP 会记为代理地址、防爆破粒度变粗；直连部署无需改动。
+
+<details>
+<summary><b>📜 历史版本日志（点击展开）</b></summary>
 
 ### 从 2.6.6 升级到 2.6.7
 
@@ -482,9 +494,6 @@ rm -rf storage/cache/templates/*
 - 修复：伪静态保留静态资源缓存 location 的同时，新增 `location ^~ /avatar/ { try_files $uri /index.php?$query_string; }`。`^~` 是前缀优先匹配，命中后不再走任何正则，**与书写顺序、外部 include 都无关**——这是唯一稳妥的解。（中途试过「删掉静态资源 location，让 `/avatar/*.png` 落回 `try_files`」的简化写法：本机可行，宝塔环境无效，因为抢它的规则来自本文件之外，已放弃。）
 - uploads 封锁改用两行正则 `~ ^/uploads/(.*/)?\.` 与 `~* ^/uploads/.*\.(php|phtml|phar)$`，不再需要 `^~ /uploads/` 前缀块；其 `expires` 与防盗链随之下线，需要时自行补 `valid_referers`。
 - **升级动作**：除版本号（`Context::VERSION`）外，本次不涉及 PHP 逻辑，主要改 Nginx 配置样例与文档。请把宝塔「伪静态」**整段替换**为最新的 [`config/nginx.conf.example`](config/nginx.conf.example)，再 `nginx -t && nginx -s reload`。修复后首次访问仍是默认头像（前台只读磁盘缓存、未命中即 404，响应后异步预热），刷新或再访问一次即为真实头像。
-
-<details>
-<summary><b>📜 历史版本日志（点击展开）</b></summary>
 
 ### 从 2.6.5 升级到 2.6.6
 
