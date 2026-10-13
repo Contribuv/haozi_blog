@@ -146,3 +146,23 @@
   .cmt-text{font-size:13.5px}
   .cmt-title{font-size:15px}
 }
+
+/* ── 邮箱字段：纯数字 QQ 号下拉补全 @qq.com + 头像预览 ── */
+.cmt-form .row>.cmt-field{position:relative;min-width:0}
+/* 仅横向排列时等分：column 布局下 flex-basis:0 会把高度压塌 */
+@media (min-width:768px){.cmt-form .row>input,.cmt-form .row>.cmt-field{flex:1 1 0;min-width:0}}
+.cmt-form .cmt-field input{padding-right:38px}
+.cmt-qq-av{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;object-fit:cover;pointer-events:none;background:var(--c-reply)}
+.cmt-suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;padding:8px 12px;font-size:12.5px;color:var(--c-text2);background:var(--c-sub);border:1px solid var(--c-border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);cursor:pointer;text-align:left}
+.cmt-suggest:hover{color:var(--c-accent);border-color:var(--c-accent)}
+
+/* ── 表情选择：精选 Unicode emoji（面板由 comments.js 生成） ── */
+.cmt-emoji{position:relative;flex:none}
+.cmt-emoji-btn{width:30px;height:30px;font-size:17px;line-height:1;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid var(--c-border);border-radius:8px;cursor:pointer;padding:0;transition:border-color .15s}
+.cmt-emoji-btn:hover{background:var(--c-reply);border-color:var(--c-accent)}
+.cmt-emoji-panel{position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;width:min(300px,calc(100vw - 56px));max-height:220px;overflow-y:auto;padding:10px 12px;background:var(--c-sub);border:1px solid var(--c-border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.16)}
+.cmt-emoji-group+.cmt-emoji-group{margin-top:8px}
+.cmt-emoji-title{font-size:11px;color:var(--c-text3);margin-bottom:4px}
+.cmt-emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px}
+.cmt-emoji-item{font-size:17px;line-height:1;padding:4px 0;background:none;border:none;border-radius:6px;cursor:pointer}
+.cmt-emoji-item:hover{background:var(--c-reply)}

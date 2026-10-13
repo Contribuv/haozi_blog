@@ -65,6 +65,9 @@
   var fields = document.getElementById('comment-fields');
   var remember = document.getElementById('comment-remember');
   var editBtn = document.getElementById('comment-remember-edit');
+  var emailInput = document.getElementById('comment-email');
+  var emailSuggest = document.getElementById('cmt-email-suggest');
+  var qqAv = document.getElementById('cmt-qq-av');
 
   /* ── 0.5 表单定位：仅当表单显示不全（底部/顶部被视口截断）时才滚动；
      完全可见（如文章内容较短、页面本身能装下表单）则不滚动，避免多余跳动 ── */
@@ -206,6 +209,10 @@
         if (window.toast) window.toast('正在提交，请稍候…', 'info', 2000);
         return false;
       }
+      // 邮箱若仍是纯数字 QQ 号，提交前自动补全 @qq.com（后端另有格式校验）
+      if (emailInput && QQ_RE.test(emailInput.value.trim())) {
+        emailInput.value = emailInput.value.trim() + '@qq.com';
+      }
       if (!textarea || !textarea.value.trim()) {
         if (window.toast) window.toast('请先填写评论内容', 'error');
         textarea && textarea.focus();
@@ -251,5 +258,127 @@
     try {
       if (sessionStorage.getItem('cmt_notice_closed') === '1') notice.hidden = true;
     } catch (e) {}
+  }
+
+  /* ── 7. 邮箱字段：纯数字 QQ 号 → 下拉补全 @qq.com + 预览 QQ 头像 ── */
+  var QQ_RE = /^\d{5,12}$/;
+  if (emailInput && emailSuggest) {
+    var hideSuggest = function () { emailSuggest.hidden = true; };
+
+    // 头像预览：前台代理不联网，首次未命中会 404，后端异步预热后重试即可命中
+    var qqAvTries = 0;
+    var showQqAv = function (qq) {
+      if (!qqAv) return;
+      qqAvTries = 0;
+      qqAv.hidden = false;
+      qqAv.src = '/avatar/q' + qq + '/100.png';
+    };
+
+    var syncEmail = function () {
+      var v = emailInput.value.trim();
+      if (QQ_RE.test(v)) {
+        emailSuggest.textContent = '补全为 ' + v + '@qq.com';
+        emailSuggest.hidden = false;
+        showQqAv(v);
+      } else {
+        hideSuggest();
+        if (qqAv) { qqAvTries = 0; qqAv.hidden = true; qqAv.removeAttribute('src'); }
+      }
+    };
+
+    emailInput.addEventListener('input', syncEmail);
+    emailInput.addEventListener('blur', function () { setTimeout(hideSuggest, 150); });
+    if (qqAv) qqAv.addEventListener('error', function () {
+      qqAv.hidden = true;
+      var v = emailInput.value.trim();
+      // 预热未完成：最多重试 2 次（1.5s / 3s），仍失败则保持隐藏
+      if (QQ_RE.test(v) && qqAvTries < 2) {
+        qqAvTries++;
+        setTimeout(function () {
+          if (QQ_RE.test(emailInput.value.trim())) {
+            qqAv.hidden = false;
+            qqAv.src = '/avatar/q' + emailInput.value.trim() + '/100.png?r=' + qqAvTries;
+          }
+        }, 1500 * qqAvTries);
+      }
+    });
+    // mousedown 先于 blur：preventDefault 防止点选时下拉被 blur 抢先关闭
+    emailSuggest.addEventListener('mousedown', function (e) {
+      e.preventDefault();
+      var v = emailInput.value.trim();
+      if (QQ_RE.test(v)) emailInput.value = v + '@qq.com';
+      hideSuggest();
+      if (qqAv) qqAv.hidden = true;
+      emailInput.focus();
+    });
+    syncEmail();   // 回填记住的邮箱时同步一次（纯数字则直接显示补全项）
+  }
+
+  /* ── 8. 表情选择：精选 Unicode emoji，插入到正文光标处 ── */
+  var EMOJI_GROUPS = [
+    { name: '笑脸', list: ['😀', '😄', '😁', '😂', '🤣', '😊', '😍', '🥰', '😘', '😉', '😎', '🤔', '😅', '😏', '🙄', '😜', '🤗', '🤭', '🥺', '😢', '😭', '😡', '😱', '😴', '🤤', '🙃', '😌', '😇'] },
+    { name: '手势', list: ['👍', '👎', '👏', '🙏', '🤝', '💪', '✌️', '🤞', '👌', '🫡', '👋', '🤟'] },
+    { name: '心与星', list: ['❤️', '💔', '💕', '💖', '💘', '✨', '🌟', '⭐', '💯'] },
+    { name: '庆祝与符号', list: ['🎉', '🎊', '🎁', '🎂', '🔥', '✅', '❌', '⚠️', '👀', '💡', '🚀', '☕'] }
+  ];
+  var emojiWrap = document.getElementById('cmt-emoji');
+  var emojiBtn = document.getElementById('cmt-emoji-btn');
+  var emojiPanel = document.getElementById('cmt-emoji-panel');
+  if (emojiBtn && emojiPanel && textarea) {
+    var frag = document.createDocumentFragment();
+    EMOJI_GROUPS.forEach(function (g) {
+      var box = document.createElement('div');
+      box.className = 'cmt-emoji-group';
+      var title = document.createElement('div');
+      title.className = 'cmt-emoji-title';
+      title.textContent = g.name;
+      box.appendChild(title);
+      var grid = document.createElement('div');
+      grid.className = 'cmt-emoji-grid';
+      g.list.forEach(function (ch) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cmt-emoji-item';
+        b.textContent = ch;
+        grid.appendChild(b);
+      });
+      box.appendChild(grid);
+      frag.appendChild(box);
+    });
+    emojiPanel.appendChild(frag);
+
+    var closeEmoji = function () {
+      emojiPanel.hidden = true;
+      emojiBtn.setAttribute('aria-expanded', 'false');
+    };
+    emojiBtn.addEventListener('click', function () {
+      var willOpen = emojiPanel.hidden;
+      emojiPanel.hidden = !willOpen;
+      emojiBtn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    });
+    emojiPanel.addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('.cmt-emoji-item') : null;
+      if (!b) return;
+      var ch = b.textContent;
+      var s = textarea.selectionStart;
+      var en = textarea.selectionEnd;
+      if (typeof s === 'number' && typeof en === 'number') {
+        var v = textarea.value;
+        textarea.value = v.slice(0, s) + ch + v.slice(en);
+        var pos = s + ch.length;
+        textarea.setSelectionRange(pos, pos);
+      } else {
+        textarea.value += ch;
+      }
+      textarea.focus();
+      textarea.dispatchEvent(new Event('input'));   // 同步字数统计
+      closeEmoji();   // 选毕即收起
+    });
+    document.addEventListener('click', function (e) {
+      if (emojiWrap && !emojiWrap.contains(e.target)) closeEmoji();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeEmoji();
+    });
   }
 })();

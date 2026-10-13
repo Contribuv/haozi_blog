@@ -101,12 +101,22 @@
             {% endif %}
             <div class="row" id="comment-fields"{% if commenter.author %} hidden{% endif %}>
                 <input type="text" name="author" placeholder="昵称 *" maxlength="30" required value="{{ commenter.author or '' }}">
-                <input type="email" name="email" placeholder="邮箱（选填，用于头像）" maxlength="100" value="{{ commenter.email or '' }}">
+                {# 邮箱：输入纯数字 QQ 号时下拉补全 @qq.com 并预览 QQ 头像（comments.js 驱动）；type=text 避免原生 email 校验拦截，格式仍由后端校验 #}
+                <div class="cmt-field">
+                    <input type="text" name="email" id="comment-email" inputmode="email" autocomplete="off" placeholder="QQ号或邮箱（选填，用于头像）" maxlength="100" value="{{ commenter.email or '' }}">
+                    <img class="cmt-qq-av" id="cmt-qq-av" alt="" hidden>
+                    <div class="cmt-suggest" id="cmt-email-suggest" hidden></div>
+                </div>
                 <input type="url" name="website" placeholder="网址（选填，http/https）" maxlength="200" value="{{ commenter.website or '' }}">
             </div>
             {% endif %}
             <textarea name="content" placeholder="写下你的想法..." maxlength="2000" required></textarea>
             <div class="foot">
+                {# 表情选择：面板内容由 comments.js 生成，避免在模板里堆 emoji #}
+                <div class="cmt-emoji" id="cmt-emoji">
+                    <button type="button" class="cmt-emoji-btn" id="cmt-emoji-btn" aria-label="插入表情" aria-expanded="false">🙂</button>
+                    <div class="cmt-emoji-panel" id="cmt-emoji-panel" hidden></div>
+                </div>
                 <label class="chk"><input type="checkbox" name="is_private" value="1" id="comment-private"><span>私密评论（仅博主可见）</span></label>
                 <span class="count">0 / 2000</span>
                 <button type="submit" class="submit">提交评论</button>
