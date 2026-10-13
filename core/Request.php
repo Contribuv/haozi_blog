@@ -48,22 +48,6 @@ class Request
     public static function ip(): string
     {
         $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
-        if ($remote !== '' && self::isPrivateIp($remote)) {
-            foreach (['HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP'] as $k) {
-                $v = $_SERVER[$k] ?? '';
-                if ($v === '') {
-                    continue;
-                }
-                // XFF 是一串「客户端, 代理1, 代理2」，最左侧才是真实来源；
-                // 但仍要逐段校验格式，否则伪造头可以把任意字符串塞进日志和锁定的键。
-                foreach (explode(',', $v) as $part) {
-                    $first = trim($part);
-                    if (filter_var($first, FILTER_VALIDATE_IP) !== false) {
-                        return $first;
-                    }
-                }
-            }
-        }
         if ($remote !== '' && $remote !== 'unknown') {
             return $remote;
         }
