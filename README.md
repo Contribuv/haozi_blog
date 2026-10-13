@@ -1,61 +1,80 @@
 # Haozi Blog（PHP 版）
 
-infowe.site 博客系统的 PHP 实现：**单管理员、轻量、开箱即用**，自带图形化安装向导，无需 Python 环境。
+> **infowe.site 博客系统的 PHP 实现：单管理员 · 轻量 · 开箱即用 · 自带图形化安装向导 · 无需 Python 环境**
 
-> 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
+原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-## 功能特性
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4)
+![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1)
+![version](https://img.shields.io/badge/version-2.6.7-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
 
-### 前台
+---
 
-- **文章**：Markdown 写作、分类、标签、精选、阅读时长、访问计数、上下篇导航
-- **文章状态**：`published`（已发布）/ `draft`（草稿）/ `hidden`（隐藏）——隐藏的文章仅凭 URL
-  可访问，不出现在首页、文章列表、标签页、年份归档与上下篇导航中
-- **检索**：全文搜索、标签聚合页、分类筛选、分页
-- **订阅**：`/feed.xml` RSS 输出
-- **评论**：可开关、嵌套回复、审核制、通知邮件、IP 归属地离线解析（内置 ip2region 库，零外部请求）、头像代理
-- **项目展示**：GitHub / Gitee 仓库信息同步、语言占比统计、单项目评论区
-- **友链**：申请提交 + 后台审核、批量管理
-- **时间线 / 关于页 / 站点状态监控**（探活结果可后台配置）
-- 分享卡片缩略图（`og:image` 自动生成）、站内 404 页、站点备案信息展示
+## 🚀 快速导航
 
-### 后台
+| [✨ 功能特性](#-功能特性) | [📦 环境要求](#-环境要求) | [🗂️ 目录结构](#️-目录结构) |
+| --- | --- | --- |
+| [🔧 安装向导](#-安装向导) | [🌐 伪静态与服务器配置](#-伪静态与服务器配置) | [📝 评论表情面板](#-评论表情面板) |
+| [💻 本地开发](#-本地开发) | [⬆️ 升级](#️-升级) | [❓ 常见问题](#-常见问题) |
+| [📋 版本](#-版本) | [💚 开源](#-开源) | |
 
-- 仪表盘（文章/评论/友链统计）
-- 文章管理：新建、编辑、预览、删除、批量操作
-- 分类 / 标签 / 时间线 / 友链 / 评论 管理（均支持批量操作）
-- 项目管理：单条或全量同步 GitHub 数据、同步状态查询
-- 评论审核与批量清理
-- 媒体上传：图片 / 媒体 / 文件
-- 孤儿文件清理：缩略图预览、搜索、排序、批量删除
-- 站点设置：站点信息、导航开关、评论开关、统计代码注入、图片水印、SMTP 测试
-- 主题切换（多套主题目录，开箱内置 `tech`）
-- 数据备份与迁移：数据库备份、SQL / SQLite 文件导入、JSON / Markdown 导出
-- **在线升级**：检测并一键升级，GitHub Releases 主源 + Gitee 镜像回退
+---
 
-### 安全
+## ✨ 功能特性
 
-- 单管理员硬约束（数据库触发器兜底 + 程序层保证）
-- 登录防爆破（基于 IP 的失败计数、递增延迟、15 分钟锁定、验证码）
-- OTP 双重验证（RFC 6238 TOTP，兼容 Google Authenticator / 1Password / Authy）
-- 邮箱找回密码（6 位验证码，10 分钟有效、60 秒限频）
-- **CSRF 防护**：全部 POST 请求在根 `index.php` 统一校验 Origin / Referer 同源，
-  跨站提交一律返回 403（`themes/<主题>/403.html`）；配合 Session Cookie 的 `SameSite=Lax`
-  形成两层防护，后台表单无需手工插入 token
-- 反代场景下 `X-Forwarded-For` 伪造防护：仅当 `REMOTE_ADDR` 本身是回环 / 私网地址时
-  才采信 XFF，且逐段校验格式
-- 安全响应头、CSP、Session Cookie 加固、Markdown 链接协议过滤（含 GitHub README）
+### 🎨 前台
 
-## 环境要求
+| 模块 | 说明 |
+| --- | --- |
+| 📄 **文章** | Markdown 写作、分类、标签、精选、阅读时长、访问计数、上下篇导航 |
+| 🚦 **文章状态** | `published`（已发布）/ `draft`（草稿）/ `hidden`（隐藏）——隐藏文章仅凭 URL 可访问，不出现在首页、列表、标签页、年份归档与上下篇导航 |
+| 🔍 **检索** | 全文搜索、标签聚合页、分类筛选、分页 |
+| 📡 **订阅** | `/feed.xml` RSS 输出 |
+| 💬 **评论** | 可开关、嵌套回复、审核制、通知邮件、IP 归属地离线解析（内置 ip2region，零外部请求）、头像代理、4 组 61 个精选表情面板 |
+| 🗃️ **项目展示** | GitHub / Gitee 仓库信息同步、语言占比统计、单项目评论区 |
+| 🔗 **友链** | 申请提交 + 后台审核、批量管理 |
+| 🕐 **时间线 / 关于页 / 站点状态监控** | 探活结果可后台配置 |
+| 🖼️ **其他** | 分享卡片缩略图（`og:image` 自动生成）、站内 404 页、站点备案信息展示 |
+
+### ⚙️ 后台
+
+- 📊 **仪表盘** — 文章 / 评论 / 友链统计
+- 📝 **文章管理** — 新建、编辑、预览、删除、批量操作
+- 🏷️ **分类 / 标签 / 时间线 / 友链 / 评论** — 均支持批量操作
+- 🗃️ **项目管理** — 单条或全量同步 GitHub 数据、同步状态查询
+- ✅ **评论审核** — 审核与批量清理
+- 📤 **媒体上传** — 图片 / 媒体 / 文件
+- 🧹 **孤儿文件清理** — 缩略图预览、搜索、排序、批量删除
+- 🛠️ **站点设置** — 站点信息、导航开关、评论开关、统计代码注入、图片水印、SMTP 测试
+- 🎭 **主题切换** — 多套主题目录，开箱内置 `tech`
+- 💾 **数据备份与迁移** — 数据库备份、SQL / SQLite 文件导入、JSON / Markdown 导出
+- ⬆️ **在线升级** — 检测并一键升级，GitHub Releases 主源 + Gitee 镜像回退
+
+### 🔒 安全
+
+- 🧍 **单管理员硬约束** — 数据库触发器兜底 + 程序层保证
+- 🛡️ **登录防爆破** — 基于 IP 的失败计数、递增延迟、15 分钟锁定、验证码
+- 🔐 **OTP 双重验证** — RFC 6238 TOTP，兼容 Google Authenticator / 1Password / Authy
+- 📧 **邮箱找回密码** — 6 位验证码，10 分钟有效、60 秒限频
+- 🚫 **CSRF 防护** — 全部 POST 请求在根 `index.php` 统一校验 Origin / Referer 同源，跨站提交一律返回 403（`themes/<主题>/403.html`）；配合 Session Cookie 的 `SameSite=Lax` 形成两层防护，后台表单无需手工插入 token
+- 🌐 **反代 XFF 伪造防护** — 仅当 `REMOTE_ADDR` 本身是回环 / 私网地址时才采信 `X-Forwarded-For`，且逐段校验格式
+- 🧱 **其他** — 安全响应头、CSP、Session Cookie 加固、Markdown 链接协议过滤（含 GitHub README）
+
+---
+
+## 📦 环境要求
 
 | 项目 | 要求 | 说明 |
 | --- | --- | --- |
-| PHP | 8.0 及以上 | 推荐 8.2 / 8.3 |
-| MySQL | 5.7 或 8.0 | 字符集 `utf8mb4` |
-| PHP 扩展 | `pdo_mysql`、`mbstring`、`curl`、`gd` | 安装向导第一步自动检测 |
-| Web 服务器 | Nginx / Apache | 运行目录（网站根目录）直接指向**项目根目录** |
+| 🐘 **PHP** | 8.0 及以上 | 推荐 8.2 / 8.3 |
+| 🐬 **MySQL** | 5.7 或 8.0 | 字符集 `utf8mb4` |
+| 🧩 **PHP 扩展** | `pdo_mysql`、`mbstring`、`curl`、`gd` | 安装向导第一步自动检测 |
+| 🌐 **Web 服务器** | Nginx / Apache | 运行目录直接指向**项目根目录** |
 
-## 目录结构
+---
+
+## 🗂️ 目录结构
 
 ```
 PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直接指这里
@@ -87,31 +106,26 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 └── uploads/                 上传文件
 ```
 
-> 站点 URL 与磁盘路径一一对应：`/static/…` → `static/`，`/themes/…` → `themes/`。
-> 其余非真实文件的请求一律交给根 `index.php`。
+> 💡 站点 URL 与磁盘路径一一对应：`/static/…` → `static/`，`/themes/…` → `themes/`。其余非真实文件的请求一律交给根 `index.php`。
 
-> **安全前提**：网站运行目录就是项目根，因此 `config/config.php`（含数据库密码）、
-> `core/`、`storage/`、`data/`、`backups/`、`bin/`、`plugins/`、`docs/`、`fonts/`
-> 都在 Web 可见范围内。根目录 `.htaccess`（Apache）与 README 中的 nginx 配置
-> （Nginx）**必须保留其中的封锁规则**，否则源码与数据库密码可被直接下载。
-> `themes/` 下的 `.html`（模板源码）与 `.json`（`info.json`）同样已在封锁之列，
-> 只放行 `theme.css` / `theme.js` / `preview.png`。
+> ⚠️ **安全前提**：网站运行目录就是项目根，因此 `config/config.php`（含数据库密码）、`core/`、`storage/`、`data/`、`backups/`、`bin/`、`plugins/`、`docs/`、`fonts/` 都在 Web 可见范围内。根目录 `.htaccess`（Apache）与下文 nginx 配置（Nginx）**必须保留其中的封锁规则**，否则源码与数据库密码可被直接下载。`themes/` 下的 `.html`（模板源码）与 `.json`（`info.json`）同样已在封锁之列，只放行 `theme.css` / `theme.js` / `preview.png`。
 
-> `config/config.php`、`config/installed.lock`、`storage/`、`uploads/`、`backups/`、`data/`、`.toolchain/` 均已在 `.gitignore` 中排除，更新升级不会覆盖。
+> 📌 `config/config.php`、`config/installed.lock`、`storage/`、`uploads/`、`backups/`、`data/`、`.toolchain/` 均已在 `.gitignore` 中排除，更新升级不会覆盖。
 
-## 安装（安装向导）
+---
 
-1. 将项目上传到服务器，**把网站运行目录指向项目根目录**（即包含 `index.php` 的那一层）；
-   Nginx 用户直接套用下文「伪静态与服务器配置」中的完整示例；
+## 🔧 安装向导
+
+1. 将项目上传到服务器，**把网站运行目录指向项目根目录**（即包含 `index.php` 的那一层）；Nginx 用户直接套用下文「伪静态与服务器配置」中的完整示例；
 2. 浏览器访问站点首页，自动进入安装向导；
 3. 按向导四步完成；
 4. 安装完成后自动发布一封《致使用者的一封信》作为示例文章。
 
-后台入口：`/admin`（使用安装时填写的账号密码登录）。
+> 🎯 后台入口：`/admin`（使用安装时填写的账号密码登录）。
 
 ### 向导四步
 
-**第 1 步 · 环境检测**
+**🧪 第 1 步 · 环境检测**
 
 逐项检查并显示结果，任一项不通过则无法进入下一步：
 
@@ -124,7 +138,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 | `gd` | 图片水印与缩略图 |
 | `config` / `storage` / `storage/cache` 目录可写 | 缺失会自动创建 |
 
-**第 2 步 · 数据库连接**
+**🐬 第 2 步 · 数据库连接**
 
 | 字段 | 说明 |
 | --- | --- |
@@ -136,7 +150,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 
 连接成功后向导会检查该库是否已有博客数据（有管理员账号即判定为已占用），引导改用空库。
 
-**第 3 步 · 管理员账号**
+**👤 第 3 步 · 管理员账号**
 
 | 字段 | 校验 |
 | --- | --- |
@@ -144,7 +158,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 | 密码 | 至少 8 位 |
 | 确认密码 | 需与上一步一致 |
 
-**第 4 步 · 站点信息**
+**🏠 第 4 步 · 站点信息**
 
 | 字段 | 说明 |
 | --- | --- |
@@ -158,8 +172,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 
 站点已生成运行时配置与安装标记，重复访问不会再进入向导。如需重装：删除 `config/installed.lock` 与 `config/config.php`，并清空数据库。
 
-出于安全考虑，建议在 Nginx 中禁止访问安装向导（根 `index.php` 已内置 `installed.lock`
-判断，删除 `install.php` 同样安全）：
+出于安全考虑，建议在 Nginx 中禁止访问安装向导（根 `index.php` 已内置 `installed.lock` 判断，删除 `install.php` 同样安全）：
 
 ```nginx
 location = /install.php { return 404; }
@@ -167,31 +180,29 @@ location = /install.php { return 404; }
 
 ### 手动安装（可选）
 
-不想走向导时，复制 `config/config.sample.php` 为 `config/config.php` 并填写数据库信息，
-再执行建表脚本，然后访问站点（检测到已有管理员会自动补写安装标记）：
+不想走向导时，复制 `config/config.sample.php` 为 `config/config.php` 并填写数据库信息，再执行建表脚本，然后访问站点（检测到已有管理员会自动补写安装标记）：
 
 ```bash
 php bin/schema.php          # 建表（幂等）
 php bin/migrate.php         # 结构迁移
 ```
 
-## 伪静态与服务器配置
+---
 
-站点入口已合并为根目录的 `index.php`（前台 + 后台全部路由都在其中），因此**不再需要**
-把 `/admin` 前缀单独交给另一个 `admin.php`。只剩两件事要做：
+## 🌐 伪静态与服务器配置
+
+站点入口已合并为根目录的 `index.php`（前台 + 后台全部路由都在其中），因此**不再需要**把 `/admin` 前缀单独交给另一个 `admin.php`。只剩两件事要做：
 
 1. 非真实文件的请求 → 交给 `index.php`
 2. **封锁源码与数据目录** —— 运行目录就是项目根，不封锁等于把数据库密码敞开
 
 ### Nginx
 
-宝塔面板：**网站 → 设置 → 伪静态**，粘贴以下内容（`fastcgi_pass` 的 socket 路径按实际
-PHP 版本修改，宝塔一般位于 `/tmp/php-cgi-XX.sock`）。同一份内容也存于
-[`config/nginx.conf.example`](config/nginx.conf.example)，可直接复制。
+宝塔面板：**网站 → 设置 → 伪静态**，粘贴以下内容（`fastcgi_pass` 的 socket 路径按实际 PHP 版本修改，宝塔一般位于 `/tmp/php-cgi-XX.sock`）。同一份内容也存于 [`config/nginx.conf.example`](config/nginx.conf.example)，可直接复制。
 
-> **切勿自行追加「后缀黑名单」**，例如 `location ~* \.sql$ { deny all; }`：后台的备份下载
-> 走 `/admin/export/download/*.sql`，会被一并拦掉，表现为点「下载」返回 404。`backups/`
-> 目录已由下面的目录级规则封锁，无需再按后缀拦。详见「常见问题 → 备份文件点下载返回 404」。
+下面每一条围栏都有存在的理由：目录 / 模板 / 上传封锁挡的是「可被直接下载的密码与源码」，`location ^~ /avatar/` 挡的是「头像被静态后缀正则截胡」，理由见注意事项。
+
+> ⚠️ **切勿自行追加「后缀黑名单」**，例如 `location ~* \.sql$ { deny all; }`：后台的备份下载走 `/admin/export/download/*.sql`，会被一并拦掉，表现为点「下载」返回 404。`backups/` 目录已由下面的目录级规则封锁，无需再按后缀拦。详见「常见问题 → 备份文件点下载返回 404」。
 
 ```nginx
 # 敏感目录与文件：禁止 Web 访问（缺了这条 config/config.php 可被直接下载）
@@ -199,19 +210,15 @@ location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { re
 location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
 location ~ ^/themes/.+\.(html|json)$        { return 404; }
-
-# 上传目录：防盗链（^~ 优先于下方正则，/uploads/ 统一走这里；泛子域按实际域名改）
-location ^~ /uploads/ {
-    valid_referers none blocked server_names *.infowe.site;
-    if ($invalid_referer) { return 403; }
-    location ~ ^/uploads/(.*/)?\.               { return 404; }
-    location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
-    expires 30d;
-    access_log off;
-}
+location ~ ^/uploads/(.*/)?\.               { return 404; }
+location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
 
 # 伪静态：非真实文件 / 目录交给前端控制器
 location / { try_files $uri $uri/ /index.php?$query_string; }
+
+# 头像代理：必须 ^~（前缀优先，压过宝塔等外部 include 里按后缀的静态正则），
+# 否则 /avatar/<key>/<size>.png 被当静态文件找盘 404、不进 PHP，头像全退默认
+location ^~ /avatar/ { try_files $uri /index.php?$query_string; }
 
 # 静态资源缓存（charset 不可省，否则直出的 css / js 中文乱码）
 location ~* \.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf)$ {
@@ -241,17 +248,10 @@ location ~ \.php$ {
 
 - **`/admin` 无需任何特殊配置**，根 `index.php` 已注册后台路由。
 - **`themes/` 的封锁规则不能漏**，否则主题模板源码（`base.html` 等）可被直接下载。
-- **`error_page` 一律指向预渲染静态文件，绝不写 `/index.php`**。404/403/502 恰恰发生在 PHP 通道
-  本身不可用的时候（文件没上传、fastcgi 挂了），此时让 nginx 内部再走一次 PHP 只会得到 nginx 原生页。
-  静态页由 `php bin/build_50x.php` 从 `themes/<主题>/{404,403,502}.html` 预渲染并内联 theme.css，
-  nginx 直接吐文件，不经过 PHP。改了主题样式后重新执行该脚本。
-- **排查 404 是 nginx 原生页还是主题页**：先在项目根放一个探针 `echo '<?php echo "PHPOK";' > t.php`，
-  访问 `https://你的域名/t.php`。返回 `PHPOK` 说明 PHP 通道正常，是文件没上传到位
-  （1.x 升级后 `index.php` 在根、`public/` 已删）；返回 nginx 原生页才是 `location ~ \.php$`
-  没生效，用 `nginx -T 2>/dev/null | grep -n 'location\|fastcgi\|root '` 查实际配置。
-- **不要追加「后缀黑名单」**（如 `location ~* \.sql$ { deny all; }`）：后台备份下载走
-  `/admin/export/download/*.sql`，被这类规则拦掉后表现为点「下载」返回 404。`backups/`
-  目录已由上面的目录级规则封锁，无需再按后缀拦。详见「常见问题 → 备份文件点下载返回 404」。
+- **`error_page` 一律指向预渲染静态文件，绝不写 `/index.php`**。404/403/502 恰恰发生在 PHP 通道本身不可用的时候（文件没上传、fastcgi 挂了），此时让 nginx 内部再走一次 PHP 只会得到 nginx 原生页。静态页由 `php bin/build_50x.php` 从 `themes/<主题>/{404,403,502}.html` 预渲染并内联 theme.css，nginx 直接吐文件，不经过 PHP。改了主题样式后重新执行该脚本。
+- **排查 404 是 nginx 原生页还是主题页**：先在项目根放一个探针 `echo '<?php echo "PHPOK";' > t.php`，访问 `https://你的域名/t.php`。返回 `PHPOK` 说明 PHP 通道正常，是文件没上传到位（1.x 升级后 `index.php` 在根、`public/` 已删）；返回 nginx 原生页才是 `location ~ \.php$` 没生效，用 `nginx -T 2>/dev/null | grep -n 'location\|fastcgi\|root '` 查实际配置。
+- **不要追加「后缀黑名单」**（如 `location ~* \.sql$ { deny all; }`）：后台备份下载走 `/admin/export/download/*.sql`，被这类规则拦掉后表现为点「下载」返回 404。`backups/` 目录已由上面的目录级规则封锁，无需再按后缀拦。详见「常见问题 → 备份文件点下载返回 404」。
+- **`location ^~ /avatar/` 不能删**（实测教训）：头像代理地址形如 `/avatar/<key>/<size>.png`，必须以 `.png` 结尾。nginx 中正则 location 优先于普通前缀 location，而「按后缀的静态资源规则」不止伪静态里那一段——**宝塔生成的 server 块或其它 include 常自带 `~* \.(png|jpg|…)$` 之类规则，正则按出现顺序先到先得，本项目改不到别处那段**。一旦被抢先匹配，nginx 就去磁盘找这个不存在的文件、返回 404，**请求根本不进 PHP**，表现为全站评论头像退化成默认头像、`storage/cache/avatars/` 永远为空（2.6.6 线上 bug 即此）。曾试过「干脆删掉静态资源 location、让 `/avatar/*.png` 落回 `try_files`」的简化方案，在本机可行、在宝塔环境失败——因为抢它的规则来自本文件之外。`^~` 是前缀优先匹配，命中后不再走任何正则，**与书写顺序、外部规则都无关**，是唯一稳妥的解，故保留静态资源 location 的同时必须留这一行。
 - 修改后 `nginx -t` 检查语法，再 `nginx -s reload`。
 
 ### Nginx 完整示例（server 块，HTTPS 自行补 ssl 两行）
@@ -267,18 +267,12 @@ server {
     location ~ /\.            { return 404; }
     location ^~ /.well-known/ { allow all; }
     location ~ ^/themes/.+\.(html|json)$        { return 404; }
-
-    # 上传目录：防盗链（^~ 优先于下方正则，/uploads/ 统一走这里；泛子域按实际域名改）
-    location ^~ /uploads/ {
-        valid_referers none blocked server_names *.infowe.site;
-        if ($invalid_referer) { return 403; }
-        location ~ ^/uploads/(.*/)?\.               { return 404; }
-        location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
-        expires 30d;
-        access_log off;
-    }
+    location ~ ^/uploads/(.*/)?\.               { return 404; }
+    location ~* ^/uploads/.*\.(php|phtml|phar)$ { return 404; }
 
     location / { try_files $uri $uri/ /index.php?$query_string; }
+
+    location ^~ /avatar/ { try_files $uri /index.php?$query_string; }
 
     location ~* \.(css|js|png|jpe?g|gif|webp|svg|ico|woff2?|ttf)$ {
         charset utf-8;
@@ -304,8 +298,7 @@ server {
 
 ### Apache
 
-项目根目录的 `.htaccess` 已内置全部规则（敏感目录封锁 + 主题模板封锁 + 伪静态），
-站点只需允许 `AllowOverride All`：
+项目根目录的 `.htaccess` 已内置全部规则（敏感目录封锁 + 主题模板封锁 + 伪静态），站点只需允许 `AllowOverride All`：
 
 ```apache
 <Directory /www/wwwroot/www.infowe.site>
@@ -318,10 +311,8 @@ server {
 ### 宝塔 open_basedir（重要）
 
 网站运行目录就是项目根，因此内核与数据目录天然都在 open_basedir 白名单内，通常无需处理。
-> 宝塔把 open_basedir 这项叫**「防跨站攻击」**：它只限制 PHP 读文件的**路径范围**，
-> 越界时报 `open_basedir restriction` 警告 / 错误，**与页面 404、备份下载 404 无关**。
-> 若你的症状是点备份「下载」返回 404，见「常见问题 → 备份文件点下载返回 404」，
-> 不要为此关闭「防跨站攻击」。
+
+> 💡 宝塔把 open_basedir 这项叫**「防跨站攻击」**：它只限制 PHP 读文件的**路径范围**，越界时报 `open_basedir restriction` 警告 / 错误，**与页面 404、备份下载 404 无关**。若你的症状是点备份「下载」返回 404，见「常见问题 → 备份文件点下载返回 404」，不要为此关闭「防跨站攻击」。
 
 若面板仍限制了路径导致首页报：
 
@@ -344,10 +335,38 @@ chattr +i .user.ini                      # 重新锁定，防面板覆盖
 
 注意：open_basedir 配置有约 300 秒缓存，改完后需等待或重启 PHP（约 1 分钟）再刷新页面。
 
-验证：登录 SSH 执行 `cat /www/wwwroot/www.infowe.site/.user.ini`，应看到
-`open_basedir=/www/wwwroot/www.infowe.site/:/tmp/`（**末尾不带 `/public/`**）。
+验证：登录 SSH 执行 `cat /www/wwwroot/www.infowe.site/.user.ini`，应看到 `open_basedir=/www/wwwroot/www.infowe.site/:/tmp/`（**末尾不带 `/public/`**）。
 
-## 本地开发
+---
+
+## 📝 评论表情面板
+
+评论区「写评论」工具条上的 🙂 按钮，点开是一个 Unicode 表情面板。模板里只有一个空容器（`_comments.html` 的 `#cmt-emoji-panel`），**全部表情与分组都由 `static/js/comments.js` 的 `EMOJI_GROUPS` 生成**，改表情只动这一处，不必碰模板。
+
+**分组（4 组 / 共 61 个）**
+
+| 组 | 数量 | 内容 |
+| --- | --- | --- |
+| 😀 笑脸 | 28 | 😀 😂 🥰 🤔 😭 一类表情脸 |
+| 👍 手势 | 12 | 👍 👎 👏 🙏 ✌️ 🫡 等 |
+| ❤️ 心与星 | 9 | ❤️ 💔 💕 ✨ ⭐ 💯 等 |
+| 🎉 庆祝与符号 | 12 | 🎉 🎁 🔥 ✅ ❌ ⚠️ 🚀 等 |
+
+**排版**
+
+- 每组为「组标题 + 网格」：标题 `.cmt-emoji-title`（11px 次要色），下方 `.cmt-emoji-grid` 是 CSS Grid，`repeat(auto-fill, minmax(30px, 1fr))`，按面板宽度自适应列数，单元 30px 见方、`gap: 2px`，每格一个 `.cmt-emoji-item`。
+- 组与组纵向堆叠，间距 8px；面板固定在按钮上方，宽度 `min(300px, 100vw - 56px)` 自适应窄屏，高度上限 220px，超出滚动。
+- 两套主题各一份样式：`comments.css`（default 主题）与 `comments-tech.css`（tech 主题），类名一致，改样式两处都要改。
+
+**交互**
+
+- 点 🙂 开合面板，同步 `aria-expanded`。
+- 点某个表情 → 插入正文 `textarea` 的当前光标处，插入后自动收起面板。
+- 点面板以外区域也收起。
+
+---
+
+## 💻 本地开发
 
 ```bash
 # PHP 内置服务器（bin/router.php 负责静态直出与伪静态兜底）
@@ -374,16 +393,20 @@ php -S 0.0.0.0:8000 -t . bin/router.php
 | `php bin/check_ip.php` | 校验客户端 IP 取值（反代 XFF 伪造防护） |
 | `php bin/render_errorpage.php 404` | 单独渲染某个状态码的错误页，用于排查 |
 
-`check_hidden` / `check_iploc` / `check_ip` 需要数据库连接；改动相关逻辑后先跑这三个再提交。
+> ✅ `check_hidden` / `check_iploc` / `check_ip` 需要数据库连接；改动相关逻辑后先跑这三个再提交。
 
-## 升级
+---
+
+## ⬆️ 升级
 
 - 后台「系统升级」页一键检查并升级（GitHub Releases 主源，超时或限流时自动切换 Gitee 镜像）；
 - 或在服务器上 `git pull` 后重载 PHP / 清理模板缓存（`storage/cache/templates/`）。
 
 升级只替换程序文件，`config/` 与 `storage/` 不会被覆盖。
 
-## 常见问题
+---
+
+## ❓ 常见问题
 
 ### 进入安装向导时报 open_basedir 错误
 
@@ -391,11 +414,9 @@ php -S 0.0.0.0:8000 -t . bin/router.php
 
 ### 安装时提示「未能创建单管理员守护触发器」
 
-这是 MySQL 的独立限制，**不是建表失败**：开启 binlog 时，创建触发器需要全局 `SUPER` 权限，
-而数据库账号通常只被授予单库权限（`GRANT ALL ON 该库.*`）。
+这是 MySQL 的独立限制，**不是建表失败**：开启 binlog 时，创建触发器需要全局 `SUPER` 权限，而数据库账号通常只被授予单库权限（`GRANT ALL ON 该库.*`）。
 
-向导会自动跳过该触发器，单管理员约束改由程序层保证（后台不提供创建第二个账号的入口），
-不影响正常使用。
+向导会自动跳过该触发器，单管理员约束改由程序层保证（后台不提供创建第二个账号的入口），不影响正常使用。
 
 如需数据库层兜底，用有 `SUPER` 权限的账号（如 root）手动执行一次即可，之后无需再调整任何变量：
 
@@ -412,8 +433,7 @@ END;
 
 ### 模板改动不生效
 
-模板编译产物按文件 mtime 失效。若改动了内核模板引擎（`core/Template/`）而非模板文件本身，
-缓存不会自动重建，手动清空：
+模板编译产物按文件 mtime 失效。若改动了内核模板引擎（`core/Template/`）而非模板文件本身，缓存不会自动重建，手动清空：
 
 ```bash
 rm -rf storage/cache/templates/*
@@ -421,65 +441,58 @@ rm -rf storage/cache/templates/*
 
 ### 忘记管理员密码
 
-通过后台登录页的「忘记密码」走邮箱找回；也可开启 OTP 后用恢复码。
-若两者都不可用，只能在数据库中直接重置 `users` 表的密码字段。
+通过后台登录页的「忘记密码」走邮箱找回；也可开启 OTP 后用恢复码。若两者都不可用，只能在数据库中直接重置 `users` 表的密码字段。
 
 ### 页面样式或资源 404
 
-运行目录应指向**项目根**（含 `index.php` 的那一层）。Nginx 还需确认 `config`、`core`
-等目录的 `deny all` 与 `themes/` 的模板封锁规则都未被误删。见上文「伪静态与服务器配置」。
+运行目录应指向**项目根**（含 `index.php` 的那一层）。Nginx 还需确认 `config`、`core` 等目录的 `deny all` 与 `themes/` 的模板封锁规则都未被误删。见上文「伪静态与服务器配置」。
 
 ### 备份文件点下载返回 404
 
-后台备份的 SQL 落在站点根 `backups/` 目录，下载一律走 `/admin/export/download/<文件名>`
-（`ExportController::download()` 先做文件名安全化，文件不存在才 `abort404()`）。
-出现 404 时按此顺序排查：
+后台备份的 SQL 落在站点根 `backups/` 目录，下载一律走 `/admin/export/download/<文件名>`（`ExportController::download()` 先做文件名安全化，文件不存在才 `abort404()`）。出现 404 时按此顺序排查：
 
-1. **服务器 nginx 拦了 `.sql` 后缀**（最常见）：宝塔的「网站防火墙 / 安全加固」，或自行添加的
-   `location ~* \.sql$ { deny all; return 404; }`，会把备份下载一并拦掉，去掉该规则即可。
-   正确做法是只封锁 `backups/` 目录（本项目的伪静态已含），而不是按后缀拦。
-   确认命令：`nginx -T 2>/dev/null | grep -n 'sql'`。
-2. **文件确实不存在**：备份目录被清理或迁移后，列表还显示旧记录。重新点「备份数据库」生成，
-   或到服务器上核对 `ls -l /www/wwwroot/www.infowe.site/backups/`。
+1. **服务器 nginx 拦了 `.sql` 后缀**（最常见）：宝塔的「网站防火墙 / 安全加固」，或自行添加的 `location ~* \.sql$ { deny all; return 404; }`，会把备份下载一并拦掉，去掉该规则即可。正确做法是只封锁 `backups/` 目录（本项目的伪静态已含），而不是按后缀拦。确认命令：`nginx -T 2>/dev/null | grep -n 'sql'`。
+2. **文件确实不存在**：备份目录被清理或迁移后，列表还显示旧记录。重新点「备份数据库」生成，或到服务器上核对 `ls -l /www/wwwroot/www.infowe.site/backups/`。
 3. **前置 CDN / 反向代理的「文件下载拦截」**同样会返回 404，需在 CDN 侧放行 `.sql`。
 
-> 与宝塔「防跨站攻击」（open_basedir）无关：那项只限制 PHP 读文件的路径范围，越界报的是
-> `open_basedir restriction` 警告/错误而非 404，别误关（见上文「宝塔 open_basedir」）。
+> 与宝塔「防跨站攻击」（open_basedir）无关：那项只限制 PHP 读文件的路径范围，越界报的是 `open_basedir restriction` 警告/错误而非 404，别误关（见上文「宝塔 open_basedir」）。
 
 ### 想改 403 / 404 / 500 / 502 页面
 
 编辑 `themes/<主题名>/403.html`、`404.html`、`500.html`、`502.html`，然后：
 
-- **全部四个**都要执行 `php bin/build_50x.php` 重新生成 `static/{404,403,50x}.html`，
-  因为 nginx 的 `error_page` 只读静态文件，读不到模板；
-- `403` / `404` / `500` 的 PHP 侧渲染（应用内部主动 abort 时走这条路）还会带上站点名与导航，
-  改完清空 `storage/cache/templates/*` 即生效。
+- **全部四个**都要执行 `php bin/build_50x.php` 重新生成 `static/{404,403,50x}.html`，因为 nginx 的 `error_page` 只读静态文件，读不到模板；
+- `403` / `404` / `500` 的 PHP 侧渲染（应用内部主动 abort 时走这条路）还会带上站点名与导航，改完清空 `storage/cache/templates/*` 即生效。
 
-`error_page` 必须指向静态文件，不能写 `/index.php`：404 / 403 / 502 恰恰发生在 PHP 通道本身
-不可用的时候（文件没上传、fastcgi 挂了），让 nginx 内部再走一次 PHP 只会退回 nginx 原生页。
+`error_page` 必须指向静态文件，不能写 `/index.php`：404 / 403 / 502 恰恰发生在 PHP 通道本身不可用的时候（文件没上传、fastcgi 挂了），让 nginx 内部再走一次 PHP 只会退回 nginx 原生页。
 
-`403` 是跨站请求被拦截时的页面（见下文「安全」的 CSRF 说明），由根 `index.php` 渲染，
-不需要改 nginx。
+`403` 是跨站请求被拦截时的页面（见下文「安全」的 CSRF 说明），由根 `index.php` 渲染，不需要改 nginx。
 
-## 版本
+---
 
-当前版本：**2.6.6**
+## 📋 版本
+
+当前版本：**2.6.7**
+
+### 从 2.6.6 升级到 2.6.7
+
+**修复 Nginx 下评论头像退化成默认头像**
+
+- 根因：头像代理地址形如 `/avatar/<key>/<size>.png`，以 `.png` 结尾。nginx 中正则 location 优先于普通前缀 location，而「按后缀的静态资源规则」**不止伪静态里那一段**——宝塔生成的 server 块或其它 include 常自带 `~* \.(png|jpg|…)$` 之类规则，正则按出现顺序先到先得，本项目改不到别处那段。`/avatar/*.png` 于是被当成静态文件去磁盘找、找不到即 404，请求根本不进 PHP，`storage/cache/avatars/` 永远为空，前端只能回退默认头像；Apache（`.htaccess`）与内置服务器（`bin/router.php`）没有这类规则，故本地正常、线上异常。
+- 修复：伪静态保留静态资源缓存 location 的同时，新增 `location ^~ /avatar/ { try_files $uri /index.php?$query_string; }`。`^~` 是前缀优先匹配，命中后不再走任何正则，**与书写顺序、外部 include 都无关**——这是唯一稳妥的解。（中途试过「删掉静态资源 location，让 `/avatar/*.png` 落回 `try_files`」的简化写法：本机可行，宝塔环境无效，因为抢它的规则来自本文件之外，已放弃。）
+- uploads 封锁改用两行正则 `~ ^/uploads/(.*/)?\.` 与 `~* ^/uploads/.*\.(php|phtml|phar)$`，不再需要 `^~ /uploads/` 前缀块；其 `expires` 与防盗链随之下线，需要时自行补 `valid_referers`。
+- **升级动作**：除版本号（`Context::VERSION`）外，本次不涉及 PHP 逻辑，主要改 Nginx 配置样例与文档。请把宝塔「伪静态」**整段替换**为最新的 [`config/nginx.conf.example`](config/nginx.conf.example)，再 `nginx -t && nginx -s reload`。修复后首次访问仍是默认头像（前台只读磁盘缓存、未命中即 404，响应后异步预热），刷新或再访问一次即为真实头像。
+
+<details>
+<summary><b>📜 历史版本日志（点击展开）</b></summary>
 
 ### 从 2.6.5 升级到 2.6.6
 
-# v2.6.6
-
-## 改动
 - 评论区：输入纯数字 QQ 号自动补全 @qq.com、显示 QQ 头像预览（首访未命中自动重试 2 次）
 - 评论区：新增精选 Unicode 表情面板（4 组 61 个），选中后自动关闭面板
 - 评论区：移动端视口下表单改为纵向排布，自适应布局优化
 - 样式：同步 comments.css 与 comments-tech.css 的表情与 QQ 头像预览样式
-
-## 备注
-- 未对昵称加链接（避免误触），头像已承载网址跳转
-- CSS 版本戳随发版更新以刷新浏览器缓存
-
-
+- 备注：未对昵称加链接（避免误触），头像已承载网址跳转；CSS 版本戳随发版更新以刷新浏览器缓存
 
 ### 从 2.6.4 升级到 2.6.5
 
@@ -489,8 +502,6 @@ rm -rf storage/cache/templates/*
 - 目录框窄屏上下间距调为 24px（与相邻块 margin 折叠取较大值），不再贴住标题或正文。
 - 宽屏（≥1400px）目录悬浮面板行为不变，仍固定于容器右侧。
 
-
-
 ### 从 2.6.3 升级到 2.6.4
 
 修复后台隐藏元素误显示与项目页脚本报错
@@ -499,16 +510,12 @@ rm -rf storage/cache/templates/*
 - 修复 `/admin/projects` 控制台 `Uncaught ReferenceError: update is not defined`：严格模式下 `function update()` 声明在 `if (form) { … }` 块内，块外不可见；初始化调用改置于块内。
 - 补全 `themes/tech/theme.css` 中 `.tech-related-card-title` 缺少的 `line-clamp` 标准属性，与同文件另两处写法保持一致。
 
-
-
 ### 从 2.6.2 升级到 2.6.3
 
 修复博主评论头像与后台设置不一致的问题
 
 - 评论区的「博主」头像此前固定按联系邮箱生成（QQ 邮箱取 qlogo 40 档），与后台「设置」中上传的头像对不上；现统一为：后台上传头像存在时优先使用，缺失时才回退 QQ/Cravatar。
 - 新增 `Avatar::adminUrl()` 收敛判定逻辑，文章页与项目页的博主身份条、评论区、后台评论管理共用同一实现，不再各自重复计算。
-
-
 
 ### 从 2.6.1 升级到 2.6.2
 
@@ -530,8 +537,6 @@ rm -rf storage/cache/templates/*
 
 1. 许可文字（CC BY-NC-SA 4.0）移入操作按钮同排并靠右对齐，不再单独占一行。
 2. 窄屏折行后许可文字恢复左对齐，避免单独悬于右侧。
-
-
 
 ### 从 2.6.0 升级到 2.6.1
 
@@ -555,20 +560,22 @@ rm -rf storage/cache/templates/*
 本版新增项目详情页目录侧栏，并让后台能够主动发现新版本。
 
 **项目详情页目录侧栏（新）**
+
 - 项目内页（`/projects/<id>`）新增与文章页一致的 TOC 目录：宽屏（≥1400px）固定在正文右侧常驻，窄屏折叠为「目录」框，可手动展开。
 - 目录直接解析后台同步期已缓存好的 README 标题生成，前台零网络请求、不重复渲染 Markdown，也无需重新同步项目。
 - 目录锚点全部命中正文标题，跳转后标题不会被顶部吸顶导航遮挡。
 
 **后台主动发现更新（改进）**
+
 - 后台首页与升级页的更新横幅改为三状态：发现新版本（黄色，附「去升级」入口）、已是最新、暂时未知。
 - 缓存缺失或已过期时，页面加载后自动补检一次，不再需要刷新第二次页面才能看到新版本；仍保持「渲染期零网络」，探测在响应结束后异步进行，不影响首屏速度。
 - 新增「检查更新」按钮，可手动强制探测。
 
 **其他**
+
 - 文章与项目页共用同一套目录生成逻辑（内部重构，输出不变）。
 
 无数据库结构变更，无需重新同步项目。
-
 
 ### 从 2.4.1 升级到 2.5.0
 
@@ -651,9 +658,6 @@ rm -rf storage/cache/templates/*
 
 > 升级后请后台手动「同步」一次项目，使既有 README 缓存重新生成（带代理地址与预热）；服务器需把 nginx 示例新增的 gzip 段同步到伪静态并 reload。无数据库结构变更。
 
-<details>
-<summary><b>历史版本日志（点击展开）</b></summary>
-
 ### 从 2.2.5 升级到 2.2.6
 
 本轮为安全与健壮性修复，涉及数据正确性、并发安全、XSS 与 CSRF 加固。
@@ -698,9 +702,6 @@ rm -rf storage/cache/templates/*
 3. **编辑器移除录音按钮**：工具栏的「开始录音 / 结束录音」在本站用不上，已在编辑器初始化处显式声明工具栏并去掉 `record` 项。
 
 > 无数据库结构变更；nginx 只需核对是否存在 `.sql` 后缀黑名单，既有规则本身无需改动。
-
-<details>
-<summary><b>历史版本日志（点击展开）</b></summary>
 
 ### 从 2.2.3 升级到 2.2.4
 
@@ -765,29 +766,17 @@ rm -rf storage/cache/templates/*
 
 修复与优化：
 
-1. **修复静态错误页生成失败（重要）**：`ErrorPages` 缺少 `use Blog\View`，导致
-   `php bin/build_50x.php` 与后台换主题时的重建**一直失败**，`static/404.html`、
-   `static/403.html` 始终生成不出来。nginx 的 `error_page 404 /static/404.html` 指向了不存在的
-   文件，于是 404 / 403 退回 nginx 原生页。现已修复命名空间，并把 `rebuild()` 改为逐页容错
-   （主题未提供错误页模板时降级为内置 HTML），保证三个文件一定能写出。
-2. **修复 `/projects` 首屏卡顿**：自动同步原先在请求线程内同步调用 GitHub API 检测更新，
-   项目较多时会拖慢首字节；现改为请求内只做本地判断并入队，检测与拉取在响应发出后
-   （`fastcgi_finish_request`）异步执行。
-3. **项目自动同步更省流量**：先比对远端 `pushed_at`，**有更新才拉** README 与图片；
-   手动同步按钮仍为强制全量。前台访客也能把自动同步跑完，不再依赖管理员打开后台轮询。
-4. **升级后自动重建静态错误页**：一键升级完成后自动重建一次，避免升级包里的
-   `static/*.html` 与当前主题脱节。
-5. **新增 `config/nginx.conf.example`**：可直接复制到宝塔「伪静态」的配置样例；
-   README 伪静态段落同步更新，并强调 `error_page` 必须指向 `static/{404,403,50x}.html`。
+1. **修复静态错误页生成失败（重要）**：`ErrorPages` 缺少 `use Blog\View`，导致 `php bin/build_50x.php` 与后台换主题时的重建**一直失败**，`static/404.html`、`static/403.html` 始终生成不出来。nginx 的 `error_page 404 /static/404.html` 指向了不存在的文件，于是 404 / 403 退回 nginx 原生页。现已修复命名空间，并把 `rebuild()` 改为逐页容错（主题未提供错误页模板时降级为内置 HTML），保证三个文件一定能写出。
+2. **修复 `/projects` 首屏卡顿**：自动同步原先在请求线程内同步调用 GitHub API 检测更新，项目较多时会拖慢首字节；现改为请求内只做本地判断并入队，检测与拉取在响应发出后（`fastcgi_finish_request`）异步执行。
+3. **项目自动同步更省流量**：先比对远端 `pushed_at`，**有更新才拉** README 与图片；手动同步按钮仍为强制全量。前台访客也能把自动同步跑完，不再依赖管理员打开后台轮询。
+4. **升级后自动重建静态错误页**：一键升级完成后自动重建一次，避免升级包里的 `static/*.html` 与当前主题脱节。
+5. **新增 `config/nginx.conf.example`**：可直接复制到宝塔「伪静态」的配置样例；README 伪静态段落同步更新，并强调 `error_page` 必须指向 `static/{404,403,50x}.html`。
 
-> 升级到本版后，请**先执行一次 `php bin/build_50x.php`**（或在后台切换一次主题），
-> 确保 `static/{404,403,50x}.html` 存在；否则 404 / 403 / 502 仍可能是 nginx 原生页。
+> 升级到本版后，请**先执行一次 `php bin/build_50x.php`**（或在后台切换一次主题），确保 `static/{404,403,50x}.html` 存在；否则 404 / 403 / 502 仍可能是 nginx 原生页。
 
 ### 从 2.0.0 升级到 2.1.0
 
-后台「一键升级」现在是**全量替换 + 清理旧文件**：磁盘上多出来的旧文件与目录一律删除，
-所以 1.x 残留的 `public/`、`admin.php` 不会再留在磁盘上冒充新结构。保留 `uploads/`、
-`data/`、`storage/`、`backups/`、`config/config.php`、`config/installed.lock`、`.user.ini`。
+后台「一键升级」现在是**全量替换 + 清理旧文件**：磁盘上多出来的旧文件与目录一律删除，所以 1.x 残留的 `public/`、`admin.php` 不会再留在磁盘上冒充新结构。保留 `uploads/`、`data/`、`storage/`、`backups/`、`config/config.php`、`config/installed.lock`、`.user.ini`。
 
 若你是手动覆盖上传的，请自行确认旧目录已删：
 
@@ -804,10 +793,19 @@ cd /www/wwwroot/你的站点目录 && ls -la   # 确认无 public/ 与 admin.php
 
 </details>
 
-## 开源
+---
 
-原 Flask 版作者：[Contribuv/infowe_blog](https://github.com/Contribuv/infowe_blog)
-PHP 版：[Contribuv/haozi_blog](https://github.com/Contribuv/haozi_blog) · 镜像 [infowe/haozi_blog](https://gitee.com/infowe/haozi_blog)
+## 💚 开源
 
-模板引擎 `core/Template/` 为本项目自研实现；`core/lib/cacert.pem` 来自 curl 项目（MIT）；
-`fonts/wqy-microhei.ttc` 为文泉驿微米黑（Apache-2.0）；IP 归属地解析数据来自 ip2region（Apache-2.0）。
+- 原 Flask 版作者：[Contribuv/infowe_blog](https://github.com/Contribuv/infowe_blog)
+- PHP 版：[Contribuv/haozi_blog](https://github.com/Contribuv/haozi_blog) · 镜像 [infowe/haozi_blog](https://gitee.com/infowe/haozi_blog)
+
+模板引擎 `core/Template/` 为本项目自研实现；`core/lib/cacert.pem` 来自 curl 项目（MIT）；`fonts/wqy-microhei.ttc` 为文泉驿微米黑（Apache-2.0）；IP 归属地解析数据来自 ip2region（Apache-2.0）。
+
+---
+
+## 📄 License
+
+MIT License
+
+Copyright © 2025 [豪子](https://github.com/Contribuv)
