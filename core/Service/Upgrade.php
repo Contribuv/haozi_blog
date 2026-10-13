@@ -594,8 +594,9 @@ class Upgrade
             if (function_exists('opcache_reset')) {
             opcache_reset();
         }
-            self::writeProgress(['state' => 'done', 'phase' => 'done', 'label' => '升级完成', 'percent' => 100, 'message' => $msg]);
-            return [true, $msg];
+        $msg = '升级完成';
+        self::writeProgress(['state' => 'done', 'phase' => 'done', 'label' => '升级完成', 'percent' => 100, 'message' => $msg]);
+        return [true, $msg];
         } catch (\Throwable $e) {
             // 取消用独立状态，前端据此显示「已取消」而非「失败」；其余异常仍按失败上报
             $cancelled = $e->getMessage() === self::CANCEL_MSG;
