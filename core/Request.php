@@ -48,6 +48,21 @@ class Request
     public static function ip(): string
     {
         $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+        // 若请求来自可信代理（配置列表），采信 XFF/REAL_IP
+        global $config;
+        $trusted = $config['trusted_proxies'] ?? [];
+        if (in_array($remote, $trusted, true)) {
+            foreach (['HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP'] as $k) {
+                $v = $_SERVER[$k] ?? '';
+                if ($v === '') continue;
+                foreach (explode(',', $v) as $part) {
+                    $first = trim($part);
+                    if (filter_var($first, FILTER_VALIDATE_IP) !== false) {
+                        return $first;
+                    }
+                }
+            }
+        }
         if ($remote !== '' && $remote !== 'unknown') {
             return $remote;
         }

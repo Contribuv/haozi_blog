@@ -28,14 +28,9 @@ return [
         'timezone' => 'Asia/Shanghai',
         'base_path' => '',
     ],
-    'session' => [
-        'name' => 'PHPBLOG_SESSID',
-        'lifetime' => 3600,
-        'path' => '/',
-        'domain' => '',
-        'secure' => false,
-        'httponly' => true,
-        'samesite' => 'Lax',
+    'trusted_proxies' => [
+        // 填写可信反向代理 IP（如 nginx 代理服务器）
+        // 示例：'127.0.0.1', '10.0.0.1'
     ],
     'theme' => [
         'default' => 'tech',
