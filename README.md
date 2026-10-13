@@ -472,7 +472,17 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.8**
+当前版本：**2.6.9**
+
+### 从 2.6.8 升级到 2.6.9
+
+# Release Notes v2.6.9
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.9`。
+- **功能**: 暂无新功能，仅修复已知小问题。
+- **升级动作**: 本版无数据库结构与 nginx 配置变更，直接替换代码即可。
+- **注意**: 如使用反向代理，请在 `config/config.php` 中补全 `trusted_proxies` 配置。
+
 
 ### 从 2.6.7 升级到 2.6.8
 

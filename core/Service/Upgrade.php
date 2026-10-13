@@ -591,10 +591,9 @@ class Upgrade
             // 7. 重建静态错误页：升级包里的 static/{404,403,50x}.html 可能滞后于当前主题，
             //    且文件缺失时 nginx 的 error_page 会扑空退回原生页
             ErrorPages::rebuild();
-            $msg = '升级成功：代码已从 v' . Context::VERSION . ' 更新为 v' . $tag
-                . '（替换 ' . $replaced . ' 个文件，删除 ' . $removed . ' 个旧文件）。'
-                . '数据已自动备份到 backups/upgrade_' . $ts . '_' . $tag
-                . '，请重启服务生效。';
+            if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
             self::writeProgress(['state' => 'done', 'phase' => 'done', 'label' => '升级完成', 'percent' => 100, 'message' => $msg]);
             return [true, $msg];
         } catch (\Throwable $e) {
