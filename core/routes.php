@@ -121,5 +121,6 @@ return [
         ['GET', '/admin/upgrade/check', 'admin/UpgradeController@check'],
         ['GET', '/admin/upgrade/progress', 'admin/UpgradeController@progress'],
         ['POST', '/admin/upgrade/cancel', 'admin/UpgradeController@cancel'],
+        ['POST', '/admin/upgrade/reset', 'admin/UpgradeController@reset'],
     ],
 ];

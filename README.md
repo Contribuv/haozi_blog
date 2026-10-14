@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.13-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.14-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,22 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.13**
+当前版本：**2.6.14**
+
+### 从 2.6.13 升级到 2.6.14
+
+# Release Notes v2.6.14
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.14`。
+- **修复（取消必达终态）**: `Upgrade::cancel()` 原先只写一个取消标记，能否真正停下取决于升级进程是否读到它——进程若已被系统杀掉，标记永远没人消费，前端就一直停在「正在取消…」。现在该接口先看进度心跳：进程已死则就地收敛为「已取消」并清锁；进程活着才写标记等检查点。前端另加 45 秒兜底判据（以「心跳是否仍在推进」为准，正在备份时不会误判）。
+- **修复（取消后反复回到升级中页面）**: 进度文件残留 `running` 时，`resumeIfRunning()` 只看 `state`、不校验心跳新鲜度，于是每次进页面都弹浮窗、刷新后又弹回，形成死循环。服务端 `progress()` 现给出 `stale` 字段（与 `isRunning()` 同一套 `LOCK_TTL` 判据），前端据此转入「上次升级已中断」态，且**不再自动刷新**。
+- **新增**: `POST /admin/upgrade/reset`（`Upgrade::resetState()`）一次清掉进度、取消标记与升级锁，把页面恢复成可重新升级；仅在没有新鲜的进行中进程时允许执行。页面上不新增元素——浮窗里原有的按钮在中断态就地变成「清除升级状态」。
+- **修复（假启动）**: `spawnWorker()` 改用 `ini_get('disable_functions')` 显式判断 `exec` 是否被禁——`function_exists('exec')` 对被禁函数仍返回 `true`，原写法会回 `ok:true` 而后台进程从未启动，前端一直干等。
+- **修复（取消竞态）**: 移除 `doUpgrade()` 里多余的那次 `clearCancel()`。同步回退模式下，用户在浮窗出现后立刻点取消写下的标记会被它抹掉，取消彻底失效。
+- **修复（锁与心跳对齐）**: `writeProgress()` 顺带刷新升级锁 mtime，避免长时间升级被后来者误判为过期锁、两个升级进程并发覆盖代码；`run()` 在启动前显式清掉残留锁，防止被刷新后的残留锁挡住新 worker。
+- **优化**: 升级期间禁用「重新检测」与「一键升级」按钮；版本结果行补上缓存时间，解释「来源 GitHub」与更新源实时显示 GitHub 不可用并存的现象。
+- **升级动作**: 本版无数据库结构与 Nginx 配置变更，直接替换代码即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
+- **提示**: 若线上正卡在「升级中、取消不掉」，可先删除 `data/upgrade_progress.json`、`data/upgrade_cancel`、`upgrade.lock` 三处残留状态后重新升级；升级到本版后页面会自行识别并给出「清除升级状态」入口。
 
 ### 从 2.6.12 升级到 2.6.13
 

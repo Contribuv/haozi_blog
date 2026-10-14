@@ -213,7 +213,9 @@ class Upgrade
      */
     public static function spawnWorker(string $tag): bool
     {
-        if (!function_exists('exec')) {
+        // disable_functions 禁掉 exec 时 function_exists 仍返回 true，只认它会「假启动」：
+        // 接口回 ok=true、前端开始轮询，而后台进程从未跑起来
+        if (!function_exists('exec') || self::functionDisabled('exec')) {
             return false;
         }
         // Windows 下没有 nohup/nice，起不了后台进程；直接回退同步执行，免得假报「已启动」让前端空等
@@ -237,6 +239,13 @@ class Upgrade
         @exec($cmd);
         // exec 无法可靠得知子进程是否起活，交给进度轮询兜底（isRunning 据进度判断）
         return true;
+    }
+
+    /** 某函数是否被 disable_functions 禁用（function_exists 对被禁函数的判断不可靠） */
+    private static function functionDisabled(string $fn): bool
+    {
+        $list = array_map('trim', explode(',', (string) ini_get('disable_functions')));
+        return in_array($fn, $list, true);
     }
 
     /** 找到可用的 PHP CLI 解释器。FPM 下 PHP_BINARY 指向 php-fpm 不能跑脚本，需回退到 PHP_BINDIR/php */
@@ -278,6 +287,63 @@ class Upgrade
     public static function isCancelled(): bool
     {
         return is_file(self::cancelFile());
+    }
+
+    /**
+     * 请求取消升级，并保证「必达终态」：
+     * 进程还活着 → 只写标记，由它在下一个检查点自行中止并写终态；
+     * 进程心跳已过期（多半被系统杀掉）→ 标记永远不会有人消费，直接就地收敛为「已取消」，
+     * 否则前端一直停在「正在取消…」、刷新后又弹回浮窗，用户感受就是「取消不掉」。
+     * 返回 [是否成功, 提示语]。
+     */
+    public static function cancel(): array
+    {
+        $p = self::progress();
+        if (($p['state'] ?? '') !== 'running') {
+            // 已经不在运行（done / failed / cancelled / idle）：没有可取消的对象，顺手清干净
+            self::clearCancel();
+            return [true, '当前没有正在进行的升级'];
+        }
+        $ts = (int) ($p['ts'] ?? 0);
+        if ($ts <= 0 || (time() - $ts) > self::LOCK_TTL) {
+            self::clearCancel();
+            self::clearLock();
+            self::writeProgress([
+                'state' => 'cancelled',
+                'phase' => 'cancelled',
+                'label' => '升级已取消',
+                'percent' => -1,
+                'message' => '升级进程已中断，残留状态已清除',
+            ]);
+            return [true, '升级进程已中断，已清除残留状态'];
+        }
+        self::requestCancel();
+        return [true, '取消请求已提交，正在等待当前步骤结束'];
+    }
+
+    /** 主动释放升级锁（进程已死的判定成立、或确认要重新开始升级时用，免得干等锁自然过期） */
+    public static function clearLock(): void
+    {
+        $lock = self::lockFile();
+        if (is_file($lock)) {
+            @unlink($lock);
+        }
+    }
+
+    /**
+     * 清除升级残留状态：进度、取消标记、升级锁一并清掉，把页面恢复成「可以重新升级」。
+     * 只在没有新鲜的进行中进程时允许，避免把真正在跑的升级清掉。
+     * 返回 [是否成功, 提示语]。
+     */
+    public static function resetState(): array
+    {
+        if (self::isRunning()) {
+            return [false, '升级仍在进行中，请等待它结束或稍后再试'];
+        }
+        self::clearProgress();
+        self::clearCancel();
+        self::clearLock();
+        return [true, '升级状态已清除，可以重新升级了'];
     }
 
     /** 清除取消标记（升级开始/结束时调用，免得残留影响下一次升级） */
@@ -324,18 +390,32 @@ class Upgrade
         }
         @file_put_contents($file . '.tmp', json_encode($data, JSON_UNESCAPED_UNICODE), LOCK_EX);
         @rename($file . '.tmp', $file);
+        // 顺带刷新升级锁的 mtime：锁的「过期」判定依赖它。若锁 mtime 停在升级开始那一刻，
+        // 长时间升级会被后来者当成过期锁清掉，两个升级进程并发覆盖代码
+        $lock = self::lockFile();
+        if (is_file($lock)) {
+            @touch($lock);
+        }
     }
 
     /** 读取当前升级进度；无进度文件或内容损坏时返回 idle */
     public static function progress(): array
     {
-        $idle = ['state' => 'idle', 'phase' => '', 'label' => '', 'percent' => -1, 'ts' => 0];
+        $idle = ['state' => 'idle', 'phase' => '', 'label' => '', 'percent' => -1, 'ts' => 0, 'stale' => false];
         $file = self::progressFile();
         if (!is_file($file)) {
             return $idle;
         }
         $d = json_decode((string) @file_get_contents($file), true);
-        return is_array($d) ? $d : $idle;
+        if (!is_array($d)) {
+            return $idle;
+        }
+        // running 但心跳已过期：进程多半被系统杀掉（FPM 重启 / request_terminate_timeout 到点），
+        // 前端据此不再无限等待、也不再反复把浮窗弹回来
+        $d['stale'] = ($d['state'] ?? '') === 'running'
+            && (int) ($d['ts'] ?? 0) > 0
+            && (time() - (int) $d['ts']) > self::LOCK_TTL;
+        return $d;
     }
 
     /** 清除进度文件（升级开始前调用，避免上次的陈旧终态被前端读到） */
@@ -382,6 +462,12 @@ class Upgrade
     public static function cachedLatest(): ?array
     {
         return self::loadCache()['info'];
+    }
+
+    /** 版本缓存写入时间戳（升级页用它说明「结果来自缓存」）；无缓存返回 0 */
+    public static function cachedAt(): int
+    {
+        return (int) self::loadCache()['t'];
     }
 
     /** 原子写入缓存 */
@@ -536,9 +622,10 @@ class Upgrade
         fwrite($fp, (string) time());
         fclose($fp);
 
-        // 清掉上次残留的进度与取消标记，再写本次起点：备份阶段耗时不可预估，先亮出「备份中」
+        // 清掉上次残留的进度后再写本次起点：备份阶段耗时不可预估，先亮出「备份中」。
+        // 刻意不清取消标记——该清理由 run() 在拉起本进程前完成；若在这里再清一次，
+        // 用户看到浮窗后立刻点「取消」写下的标记会被抹掉，取消彻底失效（同步回退模式下必现）
         self::clearProgress();
-        self::clearCancel();
         self::writeProgress(['state' => 'running', 'phase' => 'backup', 'label' => '正在备份数据…', 'percent' => -1]);
 
         $tmp = sys_get_temp_dir() . '/infowe_upgrade_' . bin2hex(random_bytes(5));

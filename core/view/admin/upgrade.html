@@ -55,7 +55,7 @@
 {% endblock %}
 
 {% block admin_scripts %}
-<script type="application/json" id="upgrade-urls">{"upgrade": "{{ url_for('admin_upgrade') }}", "check": "{{ url_for('admin_upgrade_check') }}", "progress": "{{ url_for('admin_upgrade_progress') }}", "cancel": "{{ url_for('admin_upgrade_cancel') }}"}</script>
+<script type="application/json" id="upgrade-urls">{"upgrade": "{{ url_for('admin_upgrade') }}", "check": "{{ url_for('admin_upgrade_check') }}", "progress": "{{ url_for('admin_upgrade_progress') }}", "cancel": "{{ url_for('admin_upgrade_cancel') }}", "reset": "{{ url_for('admin_upgrade_reset') }}"}</script>
 <script>
 (function () {
     var UPGRADE_URLS = JSON.parse(document.getElementById('upgrade-urls').textContent);
@@ -115,7 +115,10 @@
         if (d.upgradable) {
             var notes = '';
             var srcName = d.source === 'gitee' ? 'Gitee 镜像' : 'GitHub';
-            if (d.published_at) notes += '<p class="text-muted">发布于 ' + esc(d.published_at) + ' · 来源 ' + esc(srcName) + '</p>';
+            // 「来源」指这份版本信息来自哪个平台，与下方「更新源」的实时可用状态是两回事：
+            // 信息可能来自缓存（当时该平台可用、现在已熔断），故补上缓存时间，避免看起来自相矛盾
+            var cached = d.cached_at ? '（版本信息缓存于 ' + srcTime(d.cached_at) + '）' : '';
+            if (d.published_at) notes += '<p class="text-muted">发布于 ' + esc(d.published_at) + ' · 来源 ' + esc(srcName) + esc(cached) + '</p>';
             if (d.body) notes += '<div class="upgrade-notes"><h4>更新内容</h4><pre class="upgrade-body">' + esc(d.body_html || d.body) + '</pre></div>';
             resultBox.innerHTML =
                 '<div class="card">' +
@@ -160,6 +163,8 @@
         // 升级在独立后台进程里跑，POST 只负责启动、秒回；前端轮询 /admin/upgrade/progress
         // 把下载百分比与当前阶段实时画到居中浮窗上，读到终态后把结果留在浮窗并刷新页面
         var upgrading = false, finished = false, armed = false, pollTimer = null;
+        // interrupted：判定后台进程已中断（心跳过期 / 取消迟迟不生效）时进入的「可清除残留状态」态
+        var interrupted = false, cancelSentAt = 0;
         var maskEl = document.getElementById('upgrade-mask');
         var phaseEl = document.getElementById('upgrade-phase');
         var pctEl = document.getElementById('upgrade-pct');
@@ -191,6 +196,22 @@
             }
         }
 
+        // 进入「已中断」态：停轮询、**不**自动刷新（刷新会重新读 running 又弹回浮窗，形成死循环），
+        // 复用浮窗里既有的那个按钮作为「清除升级状态」的出口，不新增任何界面元素
+        function paintInterrupted(msg) {
+            interrupted = true;
+            upgrading = false;
+            if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+            maskEl.hidden = false;
+            fillEl.classList.remove('is-indeterminate');
+            fillEl.style.width = '100%';
+            pctEl.textContent = '';
+            phaseEl.textContent = '上次升级已中断';
+            hintEl.textContent = (msg || '后台升级进程长时间无响应。') + ' 可清除残留状态后重新升级。';
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = '清除升级状态';
+        }
+
         function poll() {
             if (!upgrading) return;
             fetch(UPGRADE_URLS.progress, { credentials: 'same-origin' })
@@ -198,10 +219,16 @@
                 .then(function (p) {
                     if (!upgrading || !p) return;
                     if (p.state === 'running') {
-                        // 进度文件长时间未更新（超过服务端的锁有效期），多半是后台进程被系统杀了，
-                        // 别再让用户无限等；判据与服务端 Upgrade::LOCK_TTL 一致
-                        if (p.ts && (Date.now() / 1000 - p.ts) > 600) {
-                            finish({ label: '升级进程似乎已中断', message: '后台升级进程长时间无响应，请刷新页面查看结果。' });
+                        // 心跳过期（判据由服务端按 Upgrade::LOCK_TTL 给出）＝后台进程多半已被系统杀掉。
+                        // 此时无限等待没有意义，转「已中断」态给出清除入口
+                        if (p.stale) {
+                            paintInterrupted('后台升级进程长时间无响应，多半已被服务器重启或超时限制终止。');
+                            return;
+                        }
+                        // 已提交取消，但过了 45 秒心跳仍停在取消提交之前：说明进程没再干活、标记多半没人消费。
+                        // 若心跳一直在推进（比如正在备份，打点每 2 秒一次），说明进程还活着，继续等它到检查点自行中止
+                        if (cancelSentAt && (Date.now() / 1000 - cancelSentAt) > 45 && (p.ts || 0) <= cancelSentAt) {
+                            paintInterrupted('取消请求已提交，但后台进程已无响应。');
                             return;
                         }
                         paintProgress(p);
@@ -226,11 +253,22 @@
             setTimeout(function () { location.reload(); }, 3000);
         }
 
+        // 结果卡片里的「一键升级」按钮由 render() 动态插入，升级期间统一禁用，避免重复提交
+        function setUpgradeButtons(enabled) {
+            var btns = resultBox.querySelectorAll('[data-action="upgrade"]');
+            for (var i = 0; i < btns.length; i++) { btns[i].disabled = !enabled; }
+        }
+
         function startUpgrade(ver) {
             if (upgrading) return;
             if (!confirm('升级将自动备份数据（数据库与上传文件），然后用 v' + ver + ' 覆盖程序代码（文章、上传、备份目录不受影响）。确定升级吗？')) return;
             upgrading = true;
             finished = false;
+            interrupted = false;
+            cancelSentAt = 0;
+            // 升级期间禁用「重新检测」与「一键升级」：检测会重绘结果区，重复点击会重复拉起升级
+            recheckBtn.disabled = true;
+            setUpgradeButtons(false);
             // 未收到本次启动的成功响应前，不采信进度里的终态（避免上次残留的 done/failed 被误当本次结果）
             armed = false;
             maskEl.hidden = false;
@@ -250,6 +288,8 @@
                     if (j && j.ok === false) {
                         upgrading = false;
                         if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+                        recheckBtn.disabled = false;
+                        setUpgradeButtons(true);
                         phaseEl.textContent = '升级未完成';
                         hintEl.textContent = j.message || '请稍后重试';
                         setTimeout(function () { maskEl.hidden = true; }, 2000);
@@ -262,6 +302,8 @@
                     if (finished) return;
                     upgrading = false;
                     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+                    recheckBtn.disabled = false;
+                    setUpgradeButtons(true);
                     phaseEl.textContent = '无法连接服务器';
                     hintEl.textContent = '升级未开始，请刷新页面重试';
                     setTimeout(function () { maskEl.hidden = true; }, 2000);
@@ -274,9 +316,20 @@
                 .then(function (r) { return r.json(); })
                 .then(function (p) {
                     if (!p || p.state !== 'running') return;
+                    // 心跳已过期的 running：进程多半已死，直接进「已中断」态并给出清除入口。
+                    // 若这里照旧弹浮窗，用户每次进页面都会看到它、点取消又没人消费，刷新后再次弹回——
+                    // 这正是「取消不掉、一进就回到升级中页面」的观感来源
+                    if (p.stale) {
+                        paintInterrupted('上次升级没有正常结束，后台进程已无响应。');
+                        return;
+                    }
                     upgrading = true;
                     finished = false;
+                    interrupted = false;
+                    cancelSentAt = 0;
                     armed = true; // 刷新页面恢复时无本次启动响应，直接采信进度
+                    recheckBtn.disabled = true;
+                    setUpgradeButtons(false);
                     maskEl.hidden = false;
                     cancelBtn.disabled = false;
                     cancelBtn.textContent = '取消升级';
@@ -294,17 +347,53 @@
             startUpgrade(btn.getAttribute('data-version') || '');
         });
 
-        // 取消升级：只写标记，服务端在下一个检查点（备份后/下载中/解压前/覆盖前）才真正停下
+        // 中间的取消按钮：正常升级中 → 取消升级；已判定中断 → 清除残留状态。
+        // 复用同一个按钮，页面结构与元素都不新增
         cancelBtn.addEventListener('click', function () {
+            if (interrupted) { clearUpgradeState(); return; }
             if (!upgrading || finished) return;
             if (!confirm('确定取消升级吗？已下载的临时内容会被丢弃，程序代码不会被改动。若正在备份，需等备份结束才停。')) return;
             cancelBtn.disabled = true;
             cancelBtn.textContent = '正在取消…';
             phaseEl.textContent = '正在取消升级…';
             hintEl.textContent = '正在等待当前步骤结束，请稍候';
+            // 记下提交时刻：45 秒内若服务端仍未给出终态，说明标记多半没人消费，转入「已中断」态
+            cancelSentAt = Date.now() / 1000;
             fetch(UPGRADE_URLS.cancel, { method: 'POST', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    // 服务端判定进程已死时会就地收敛为「已取消」，轮询随即读到终态；
+                    // 其余情况回的是「已提交，等待当前步骤结束」，直接展示服务端原话
+                    if (j && j.message) hintEl.textContent = j.message;
+                })
                 .catch(function () {});
         });
+
+        // 清除升级残留状态（进度 / 取消标记 / 升级锁）：进程已中断、取消不生效时唯一的出口
+        function clearUpgradeState() {
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = '正在清除…';
+            fetch(UPGRADE_URLS.reset, { method: 'POST', credentials: 'same-origin' })
+                .then(function (r) { return r.json(); })
+                .then(function (j) {
+                    if (j && j.ok) {
+                        phaseEl.textContent = '状态已清除';
+                        hintEl.textContent = (j.message || '可以重新升级了') + '，即将刷新页面…';
+                        setTimeout(function () { location.reload(); }, 1500);
+                    } else {
+                        phaseEl.textContent = '清除失败';
+                        hintEl.textContent = (j && j.message) ? j.message : '请刷新页面重试';
+                        cancelBtn.disabled = false;
+                        cancelBtn.textContent = '清除升级状态';
+                    }
+                })
+                .catch(function () {
+                    phaseEl.textContent = '清除失败';
+                    hintEl.textContent = '请刷新页面重试';
+                    cancelBtn.disabled = false;
+                    cancelBtn.textContent = '清除升级状态';
+                });
+        }
 
         check(false);
         resumeIfRunning();

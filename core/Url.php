@@ -99,6 +99,7 @@ class Url
         'admin_upgrade_check' => '/admin/upgrade/check',
         'admin_upgrade_progress' => '/admin/upgrade/progress',
         'admin_upgrade_cancel' => '/admin/upgrade/cancel',
+        'admin_upgrade_reset' => '/admin/upgrade/reset',
         'static' => '/static/<filename>',
     ];
 

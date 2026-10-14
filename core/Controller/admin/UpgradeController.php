@@ -46,6 +46,9 @@ class UpgradeController extends BaseController
         // 先自己把进度置为 running 再拉起后台进程：前端轮询立刻有反馈，也顺带充当「正在升级」的互斥标记
         Upgrade::clearProgress();
         Upgrade::clearCancel();
+        // 同时清掉上次残留的升级锁：上面已确认没有新鲜的进行中进程，而 writeProgress 会刷新锁 mtime，
+        // 残留锁被刷新后就再也过期不了，新 worker 会因为建不了锁而直接失败
+        Upgrade::clearLock();
         Upgrade::writeProgress(['state' => 'running', 'phase' => 'spawn', 'label' => '正在启动升级进程…', 'percent' => -1]);
 
         if (Upgrade::spawnWorker($tag)) {
@@ -88,6 +91,8 @@ class UpgradeController extends BaseController
             'body_html' => $body !== '' ? Upgrade::bodyHtml($body) : '',
             'release_url' => $info !== null ? (string) $info['html_url'] : Upgrade::RELEASE_URL,
             'source' => $info !== null ? (string) ($info['source'] ?? 'github') : '',
+            // 版本结果的缓存时间：页面用它说明「这份版本信息来自缓存」，避免与实时可用状态冲突
+            'cached_at' => $info !== null ? Upgrade::cachedAt() : 0,
             // 双平台可用性（含上次探测时间），供页面展示与判断会走哪个源
             'sources' => [
                 ['key' => 'github', 'label' => 'GitHub', 'ok' => (bool) $state['github']['ok'], 'checked' => (int) $state['github']['checked']],
@@ -108,16 +113,31 @@ class UpgradeController extends BaseController
         Response::json($p);
     }
 
-    /** POST /admin/upgrade/cancel：写入取消标记，升级流程在下一个检查点中止 */
+    /**
+     * POST /admin/upgrade/cancel：请求取消升级。
+     * 进程还在跑 → 写标记等它自行中止；进程心跳已过期 → 由 Upgrade::cancel() 就地收敛为终态，
+     * 保证前端一定能拿到「已取消」，不会永远停在「正在取消…」。
+     */
     public function cancel(): void
     {
         Auth::requireAdmin();
-        Upgrade::requestCancel();
+        [$ok, $msg] = Upgrade::cancel();
         // 升级请求已释放 session 锁，此处读完即放，免得与进度轮询互相排队
         if (session_status() === PHP_SESSION_ACTIVE) {
             session_write_close();
         }
-        Response::json(['ok' => true]);
+        Response::json(['ok' => $ok, 'message' => $msg]);
+    }
+
+    /** POST /admin/upgrade/reset：清除升级残留状态（进度 / 取消标记 / 升级锁），供进程已中断时恢复 */
+    public function reset(): void
+    {
+        Auth::requireAdmin();
+        [$ok, $msg] = Upgrade::resetState();
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+        Response::json(['ok' => $ok, 'message' => $msg]);
     }
 
     /** 语义化版本比较：$a 大于 $b 返回正数 */
