@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.12-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.13-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,20 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.12**
+当前版本：**2.6.13**
+
+### 从 2.6.12 升级到 2.6.13
+
+# Release Notes v2.6.13
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.13`。
+- **新增**: 评论者填写网址时，其昵称与头像一样渲染为超链接（`a.cmt-author`，`target="_blank"` + `rel="noopener nofollow"`，与头像外链行为一致）；未填网址则保持纯文本 `span`。改的是公共片段 `core/view/shared/_comments.html`，两套主题同时生效。
+- **优化**: 评论区头像悬停反馈增强，`comments.css` 与 `comments-tech.css` 同步修改——
+  1. 高亮光环补 `transition:box-shadow .18s ease,transform .18s ease`，由硬切改为渐显；
+  2. 悬停时叠加 `transform:scale(1.06)` 轻微放大（用 `transform` 避开重排，不影响右侧昵称行）；
+  3. 用 `:has()` 让悬停头像时昵称同步变为强调色 + 下划线，把同源的「头像 / 昵称」两个链接在视觉上绑成一组；旧浏览器不支持 `:has()` 时自动降级为仅头像光环；
+  4. `prefers-reduced-motion:reduce` 下去掉过渡与缩放，仅保留静态光环。
+- **升级动作**: 本版无数据库结构与 Nginx 配置变更，直接替换代码即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
 
 ### 从 2.6.11 升级到 2.6.12
 

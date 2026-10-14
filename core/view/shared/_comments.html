@@ -37,7 +37,8 @@
         {% else %}<div class="cmt-avatar">{{ av_inner }}</div>{% endif %}
         <div class="cmt-main">
             <header class="cmt-head">
-                <span class="cmt-author">{{ c.author }}</span>
+                {% if c.website %}<a class="cmt-author" href="{{ c.website }}" target="_blank" rel="noopener nofollow" title="{{ c.website }}">{{ c.author }}</a>
+                {% else %}<span class="cmt-author">{{ c.author }}</span>{% endif %}
                 {% if c.is_author %}<span class="cmt-badge cmt-badge--author">博主</span>{% endif %}
                 {% if c.is_private %}<span class="cmt-badge cmt-badge--private">私密</span>{% endif %}
                 {% if c.status == 'pending' %}<span class="cmt-badge cmt-badge--pending">待审核</span>{% endif %}
