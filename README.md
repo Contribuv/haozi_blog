@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.16-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.17-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,15 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.16**
+当前版本：**2.6.17**
+
+### 从 2.6.16 升级到 2.6.17
+
+# Release Notes v2.6.17
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.17`。
+- **说明**: 本版无功能与代码逻辑变更，仅版本号推进，用于在线上实测验证 v2.6.16 的升级下载逻辑（检测来源联动下载首选平台、Gitee 打包中间页重试、失败原因汇总）。
+- **升级动作**: 无数据库与 Nginx 配置变更，直接替换代码即可。
 
 ### 从 2.6.15 升级到 2.6.16
 
