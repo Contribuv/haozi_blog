@@ -571,4 +571,54 @@
       textarea.addEventListener('input', function () { if (!composing) applyWordFilter(); });
     }
   }
+
+  /* ── 评论图片灯箱 ──
+     正文里的 .cmt-img 默认是缩略小图（CSS 限宽高），点击后在本层浮窗里显示原图，
+     点空白处或按 Esc 关闭。用事件委托绑定在 document 上，动态插入的评论也生效。 */
+  (function () {
+    var box = null, pic = null;
+    function build() {
+      if (box) return;
+      box = document.createElement('div');
+      box.className = 'cmt-lightbox';
+      pic = document.createElement('img');
+      pic.alt = '';
+      box.appendChild(pic);
+      // 右上角关闭按钮（移动端也能点到；点它不应冒泡成「点空白关闭」）
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cmt-lightbox-close';
+      btn.setAttribute('aria-label', '关闭');
+      btn.innerHTML = '&times;';
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        close();
+      });
+      box.appendChild(btn);
+      box.addEventListener('click', function (e) { if (e.target === box) close(); });
+      document.body.appendChild(box);
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape' || e.keyCode === 27) close(); });
+    }
+    function open(src, alt) {
+      build();
+      pic.src = src;
+      pic.alt = alt || '';
+      document.body.style.overflow = 'hidden';
+      box.classList.add('is-open');
+    }
+    function close() {
+      if (!box || !box.classList.contains('is-open')) return;
+      box.classList.remove('is-open');
+      document.body.style.overflow = '';
+    }
+    document.addEventListener('click', function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      var img = t.closest('.cmt-text .cmt-img');
+      if (!img) return;
+      e.preventDefault();
+      open(img.getAttribute('src'), img.getAttribute('alt'));
+    });
+  })();
 })();

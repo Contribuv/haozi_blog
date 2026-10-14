@@ -17,7 +17,7 @@ class Upgrade
     /** 下载/解压大小上限 200MB */
     public const MAX_BYTES = 209715200;
     /** 升级锁超时（秒）：超过视为上次异常中断，自动清理后允许重试 */
-    public const LOCK_TTL = 600;
+    public const LOCK_TTL = 300;
     /** 版本检测缓存有效期（秒） */
     public const CACHE_TTL = 600;
     /** 平台失败后的熔断窗口（秒）：窗口内直接跳过该平台，不再干等连接超时 */
@@ -787,9 +787,12 @@ class Upgrade
         }
         $lastErr = null;
         $errors = [];
+        $total = count($attempts);
+        $idx = 0;
         foreach ($attempts as $u) {
             // 上一轮下载可能因用户取消而中断，换源前先确认没被取消
             self::abortIfCancelled();
+            $idx++;
             $isDirectGithub = ($u === $url);
             $isGitee = str_contains($u, 'gitee.com');
             $label = $isGitee ? 'Gitee' : ($isDirectGithub ? 'GitHub' : '镜像');
@@ -798,6 +801,18 @@ class Upgrade
             $tries = $isGitee ? 3 : 1;
             try {
                 for ($i = 1; $i <= $tries; $i++) {
+                    // 每个源（含 Gitee 的「正在打包」重试）开始前打一次点：源站迟迟不返回数据时
+                    // 下载进度回调根本不会触发（没有数据块就没有回调），前端会一直停在
+                    // 「正在下载源码包…」看起来像卡死。亮出「第几个源/共几个」+ 重试次数，
+                    // 让用户看到进程仍在按源逐个推进，而不是无响应
+                    self::writeProgress([
+                        'state' => 'running',
+                        'phase' => 'download',
+                        'label' => '正在下载源码包（' . $idx . '/' . $total . '：' . $label . ($tries > 1 ? ' 第 ' . $i . ' 次' : '') . '）…',
+                        'percent' => -1,
+                        'dl_now' => 0,
+                        'dl_total' => 0,
+                    ]);
                     try {
                         self::streamDownload($u, $dest);
                         // 必须确认拿到的是真 zip：中间页 / 错误页都是 HTTP 200
@@ -876,8 +891,13 @@ class Upgrade
             // 另加低速保护：20 秒内平均低于 1KB/s 视为停滞立即中止，免得源站挂起时
             // 白等满 300 秒。
             CURLOPT_MAX_RECV_SPEED_LARGE => 1048576,
-            CURLOPT_TIMEOUT => 300,
-            CURLOPT_CONNECTTIMEOUT => 5,
+            // 单源总时限 120 秒：源码包约 23MB，限速 1MB/s 时 ≈24 秒即可下完，120 秒留了 5 倍
+            // 余量，既能容下偏慢的线路，又不至于在坏源上空耗太久。国内机器直连 GitHub/codeload
+            // 常「连上却不返回数据」，这种情况 LOW_SPEED 检测不会触发（无数据即无 progress 回调）、
+            // 只能干等满 TIMEOUT——旧值 300 秒会让「GitHub 直连 + 加速镜像」各白等 5 分钟，
+            // 整条下载链拖到 15 分钟以上，用户看到的就是「一直卡在下载、根本无法升级」
+            CURLOPT_TIMEOUT => 120,
+            CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_LOW_SPEED_LIMIT => 1024,
             CURLOPT_LOW_SPEED_TIME => 20,
             // Gitee 对浏览器类 UA 会返回「正在打包」的中间页（HTTP 200 + HTML），
@@ -896,13 +916,16 @@ class Upgrade
                 // 下载进度节流上报：该回调每收一个数据块就触发（每秒可达上百次），
                 // 每 0.3 秒才落一次盘，免得频繁写文件反把下载拖慢
                 $now = microtime(true);
-                if ($dlTotal > 0 && $now - $lastReport >= 0.3) {
+                if ($now - $lastReport >= 0.3) {
                     $lastReport = $now;
+                    // 刻意不带 label：writeProgress 是增量合并，保留 download() 在切源时写下的
+                    // 「（第几个源/共几个：来源）」标签，别被这里覆盖成一句无从判断的「正在下载源码包…」
                     self::writeProgress([
                         'state' => 'running',
                         'phase' => 'download',
-                        'label' => '正在下载源码包…',
-                        'percent' => (int) floor($dlNow / $dlTotal * 100),
+                        // 有 Content-Length 才换算得出百分比；chunked 或 Gitee「正在打包」中间页
+                        // 没有总长度，就只刷新已下载字节数，顺带持续更新心跳 ts
+                        'percent' => $dlTotal > 0 ? (int) floor($dlNow / $dlTotal * 100) : -1,
                         'dl_now' => $dlNow,
                         'dl_total' => $dlTotal,
                     ]);
