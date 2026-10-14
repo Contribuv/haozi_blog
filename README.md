@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.14-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.15-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,15 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.14**
+当前版本：**2.6.15**
+
+### 从 2.6.14 升级到 2.6.15
+
+# Release Notes v2.6.15
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.15`。
+- **修复**: 评论区带超链接的昵称悬停时出现下划线，`comments.css` 与 `comments-tech.css` 同步修改——去掉 `a.cmt-author:hover` 与 `.cmt-item:has(.cmt-avatar-link:hover) a.cmt-author` 两处的 `text-decoration:underline`，悬停仅保留变强调色的反馈，视觉更干净。
+- **升级动作**: 本版无数据库结构与 Nginx 配置变更，直接替换代码即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
 
 ### 从 2.6.13 升级到 2.6.14
 

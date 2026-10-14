@@ -62,7 +62,7 @@
 .cmt-avatar-link{flex:none;align-self:flex-start;display:block;border-radius:50%;line-height:0;transition:box-shadow .18s ease,transform .18s ease}
 .cmt-avatar-link:hover{box-shadow:0 0 0 2px var(--c-accent);transform:scale(1.06)}
 /* 悬停头像时昵称同步高亮：:has 不支持的老浏览器自动降级为不联动 */
-.cmt-item:has(.cmt-avatar-link:hover) a.cmt-author{color:var(--c-accent);text-decoration:underline}
+.cmt-item:has(.cmt-avatar-link:hover) a.cmt-author{color:var(--c-accent)}
 @media (prefers-reduced-motion:reduce){
   .cmt-avatar-link{transition:none}
   .cmt-avatar-link:hover{transform:none}
@@ -78,7 +78,7 @@
 .cmt-head{display:flex;align-items:baseline;column-gap:6px;row-gap:2px;flex-wrap:wrap;line-height:1.4}
 .cmt-author{font-size:13.5px;font-weight:600;color:var(--c-text)}
 a.cmt-author{color:var(--c-text);text-decoration:none}
-a.cmt-author:hover{color:var(--c-accent);text-decoration:underline}
+a.cmt-author:hover{color:var(--c-accent)}
 /* 元信息（时间/属地）跟在昵称与徽章之后同排：与身份组多留 6px，弱化成 11px 小字 */
 .cmt-time{margin-left:6px;font-size:11px;color:var(--c-text3);font-variant-numeric:tabular-nums}
 .cmt-loc{font-size:11px;color:var(--c-text3);font-style:normal}
