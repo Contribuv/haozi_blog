@@ -30,6 +30,8 @@
   /* 头像配色：tech 皮肤在下方覆盖为 accent-weak 底 + accent 字 */
   --av-bg:linear-gradient(135deg,var(--accent),var(--accent-soft,var(--accent)));
   --av-color:#fff;
+  /* 移动端点按不再出现系统默认蓝色高亮块；该属性可继承，一次覆盖评论区内所有可点元素 */
+  -webkit-tap-highlight-color:transparent;
   font-size:14px;
 }
 
@@ -58,7 +60,8 @@
 .cmt-item[data-lv="root"] .cmt-avatar{width:var(--av-root);height:var(--av-root);font-size:15px}
 .cmt-item[data-lv="reply"] .cmt-avatar{width:var(--av-reply);height:var(--av-reply);font-size:12px}
 /* 头像外链包裹层：不影响 .cmt-avatar 的尺寸计算 */
-.cmt-avatar-link{flex:none;display:block;border-radius:50%;line-height:0}
+/* align-self 防止被 .cmt-item 的 stretch 拉伸成整条评论高度（否则 50% 圆角变椭圆、hover 光环畸形） */
+.cmt-avatar-link{flex:none;align-self:flex-start;display:block;border-radius:50%;line-height:0}
 .cmt-avatar-link:hover{box-shadow:0 0 0 2px var(--c-accent)}
 .cmt-avatar{flex:none;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--av-color);font-weight:600;line-height:1;background:var(--av-bg);overflow:hidden;user-select:none}
 .cmt-avatar img{width:100%;height:100%;object-fit:cover;display:block}
@@ -140,7 +143,7 @@
 @media (max-width:767px){
   .cmt{--av-root:36px;--av-reply:26px;--gap:10px;--indent:46px}
   .cmt-thread{padding:16px 14px}
-  .cmt-replies{margin:12px 0 0;padding:0}
+  .cmt-replies{margin-top:12px;padding:0}
   .cmt-replies .cmt-item+.cmt-item{margin-top:12px}
   .cmt-form .row{flex-direction:column;gap:9px}
   .cmt-text{font-size:13.5px}

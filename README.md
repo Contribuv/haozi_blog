@@ -4,10 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4)
-![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1)
-![version](https://img.shields.io/badge/version-2.6.8-blue)
-![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.11-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -472,7 +469,18 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.10**
+当前版本：**2.6.11**
+
+### 从 2.6.10 升级到 2.6.11
+
+# Release Notes v2.6.11
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.11`。
+- **修复**: 评论区三处样式问题，`comments.css` 与 `comments-tech.css` 同步修改——
+  1. 带外链的评论头像悬停时高亮光环被纵向拉成椭圆：外链包裹层 `a.cmt-avatar-link` 被 `.cmt-item` 的 flex `stretch` 撑到整条楼层高度，叠加 `border-radius:50%` 便成椭圆，改为 `align-self:flex-start` 后恢复正圆；
+  2. 移动端点按「写评论」出现系统默认蓝色高亮块：评论容器统一设 `-webkit-tap-highlight-color:transparent`（该属性可继承，覆盖区内所有可点元素）；
+  3. 移动端楼中楼回复区丢失缩进：恢复 `var(--indent)` 左缩进（移动端 46px），楼层层级重新可见。
+- **升级动作**: 本版无数据库结构与 Nginx 配置变更，直接替换代码即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
 
 ### 从 2.6.9 升级到 2.6.10
 
