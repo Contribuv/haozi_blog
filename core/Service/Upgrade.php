@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace Blog\Service;
 
 /**
- * 系统升级服务：版本检测（GitHub Releases 优先，失败回退 Gitee 镜像）、
+ * 系统升级服务：版本检测（GitHub / Gitee 双源都查，按版本号取最高者）、
  * 一键升级（数据备份 → 下载源码包 → 安全解压 → 校验版本 → 覆盖代码）。
  * 对照原项目 check_latest_version / do_upgrade / _upgrade_apply。
  */
@@ -164,17 +164,16 @@ class Upgrade
         return $oldest === 0 || (time() - $oldest) > self::PROBE_TTL;
     }
 
-    /** 探测两个平台可用性并落盘（短超时）；供后台在响应发出后调用 */
+    /**
+     * 探测两个平台可用性并落盘（短超时）；供后台在响应发出后调用。
+     * 缓存只写「版本最高」的那份结果：原来两个平台探测完由后探测者无条件覆盖缓存，
+     * 若 GitHub 版本更高而 Gitee 更低，页面反而会显示低版本。
+     */
     public static function probeSources(): array
     {
-        foreach (['github', 'gitee'] as $src) {
-            $info = $src === 'github'
-                ? self::githubLatest(self::githubRepo())
-                : self::giteeLatest(self::giteeRepo());
-            self::markSource($src, $info !== null);
-            if ($info !== null) {
-                self::saveCache(time(), $info);
-            }
+        $info = self::bestOfSources(true);
+        if ($info !== null) {
+            self::saveCache(time(), $info);
         }
         return self::sourceState();
     }
@@ -398,7 +397,8 @@ class Upgrade
     }
 
     /**
-     * 查询最新版本：GitHub Releases 优先，失败回退 Gitee 镜像；失败静默返回 null。
+     * 查询最新版本：GitHub / Gitee 双源都查一遍、按版本号取最高者（任一源不通也不影响）；
+     * 都失败则静默返回 null。
      * 返回 ['tag','version','html_url','body','published_at','source'] 或 null。
      */
     public static function checkLatestVersion(bool $force = false): ?array
@@ -409,19 +409,7 @@ class Upgrade
         if (!$force && $cache['info'] !== null && $cache['t'] > 0 && (time() - $cache['t']) < self::CACHE_TTL) {
             return $cache['info'];
         }
-        $gitee = self::giteeRepo();
-        $info = null;
-        // 按平台健康状态决定尝试顺序：熔断中的平台排到最后，命中即止不再试另一个
-        foreach (self::order($force) as $src) {
-            if ($src === 'gitee' && $gitee === '') {
-                continue;
-            }
-            $info = $src === 'github' ? self::githubLatest(self::githubRepo()) : self::giteeLatest($gitee);
-            self::markSource($src, $info !== null);
-            if ($info !== null) {
-                break;
-            }
-        }
+        $info = self::bestOfSources($force);
         if ($info !== null) {
             self::saveCache(time(), $info);
         }
@@ -484,6 +472,37 @@ class Upgrade
             'published_at' => mb_substr((string) ($data['published_at'] ?? $data['created_at'] ?? ''), 0, 10),
             'source' => 'gitee',
         ];
+    }
+
+    /**
+     * 查询双平台并取「版本最高」者。
+     * 关键：绝不能「谁先成功就用谁」——GitHub 一旦返回结果就 break，会让 Gitee 上的
+     * 更高版本永远检测不到（反之亦然），表现为「更新只从 GitHub 获取」。
+     * 两个平台各查一次、按版本号取高；都失败返回 null。结果里的 source 标明来源。
+     */
+    private static function bestOfSources(bool $ignoreBreak = false): ?array
+    {
+        $gitee = self::giteeRepo();
+        $best = null;
+        foreach (self::order($ignoreBreak) as $src) {
+            if ($src === 'gitee' && $gitee === '') {
+                continue;
+            }
+            $info = $src === 'github' ? self::githubLatest(self::githubRepo()) : self::giteeLatest($gitee);
+            self::markSource($src, $info !== null);
+            if ($info === null) {
+                continue;
+            }
+            // 版本号逐段比较取高；相等时保留先到的那个（顺序里健康的平台在前）
+            if ($best === null || version_compare(
+                self::versionString($info['version']),
+                self::versionString($best['version']),
+                '>'
+            )) {
+                $best = $info;
+            }
+        }
+        return $best;
     }
 
     /** Releases 说明 Markdown → 纯文本（升级页展示）。彻底剥离 HTML，杜绝 XSS */

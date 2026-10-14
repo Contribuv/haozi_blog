@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.11-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.12-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,16 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.11**
+当前版本：**2.6.12**
+
+### 从 2.6.11 升级到 2.6.12
+
+# Release Notes v2.6.12
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.12`。
+- **修复**: 后台「系统升级」只认 GitHub 源的问题。`Upgrade::checkLatestVersion()` 原先按 `['github','gitee']` 顺序查询且**命中即止**——GitHub 只要返回结果（哪怕版本更旧）就 `break`，从不比较两平台版本高低，导致 Gitee 上的更高版本永远检测不到；`probeSources()` 亦有同源缺陷（两平台都探测，但缓存由后探测者无条件覆盖，可能把高版本写成低版本）。
+- **修复**: 新增 `Upgrade::bestOfSources()`——两个平台各查一次，按版本号取**最高者**（`version_compare` 逐段比较）；`checkLatestVersion()` 与 `probeSources()` 均改为调用它，任一源不通都不影响另一源的结果。
+- **升级动作**: 本版无数据库结构与 Nginx 配置变更，直接替换代码即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
 
 ### 从 2.6.10 升级到 2.6.11
 
