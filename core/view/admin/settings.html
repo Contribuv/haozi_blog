@@ -166,6 +166,32 @@
                     <span class="switch-text">开启后前台文章页显示评论区；关闭后前台不显示且提交评论将被拦截。</span>
                 </label>
             </div>
+            <div class="form-group">
+                <label>评论图片上传</label>
+                <label class="switch-label">
+                    <span class="switch">
+                        <input type="checkbox" name="comment_image_upload" value="1"{{ ' checked' if comment_image_upload|default('1') in ('1','on','true','yes') else '' }}>
+                        <span class="slider"></span>
+                    </span>
+                    <span class="switch-text">允许访客在评论框上传图片（仅 png/jpg/jpeg/gif/webp，单图 ≤5MB，同 IP 每分钟 ≤3 张、每天 ≤30 张）。关闭后按钮隐藏且接口拒绝。</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label>评论敏感词过滤</label>
+                <label class="switch-label">
+                    <span class="switch">
+                        <input type="checkbox" name="sensitive_filter_enabled" value="1"{{ ' checked' if sensitive_filter_enabled|default('1') in ('1','on','true','yes') else '' }}>
+                        <span class="slider"></span>
+                    </span>
+                    <span class="switch-text">开启后评论正文命中下方词库时，输入即被替换为等长星号（前端实时拦截 + 后端提交兜底）。关闭则完全不过滤。</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label>敏感词库</label>
+                <textarea name="sensitive_words" class="textarea-sm" rows="8"
+                          placeholder="一行一个词，例如：&#10;广告&#10;加微信&#10;# 井号开头是注释，可写说明">{{ sensitive_words }}</textarea>
+                <span class="form-hint">一行一个敏感词；<b>#</b> 开头的行是注释会被忽略。词库会下发到浏览器做实时过滤，页面源码中可见，请勿放入不希望公开的内容。开源中文词库可参考 GitHub 项目：konsheng/Sensitive-lexicon、houbb/sensitive-word、fighting41love/funNLP，自行筛选拷贝即可。</span>
+            </div>
         </div>
         <!-- 图片水印：正文/灯箱图片叠加角落水印，无痕原图备份在 uploads/.originals（公网不可达） -->
         <div class="card">

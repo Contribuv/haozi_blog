@@ -33,6 +33,7 @@ class SettingsController extends BaseController
         'smtp_host', 'smtp_sender_name', 'smtp_port', 'smtp_user',
         'smtp_pass', 'notify_email', 'footer_copyright_year',
         'footer_copyright_owner', 'footer_powered_by', 'stats_code',
+        'sensitive_words',
     ];
 
     /** GET /admin/settings：渲染设置页 */
@@ -54,6 +55,9 @@ class SettingsController extends BaseController
             'notify_email' => (string) Settings::get('notify_email', ''),
             'smtp_sender_name' => (string) Settings::get('smtp_sender_name', ''),
             'comment_notify' => (string) Settings::get('comment_notify', '0'),
+            'comment_image_upload' => (string) Settings::get('comment_image_upload', '1'),
+            'sensitive_filter_enabled' => (string) Settings::get('sensitive_filter_enabled', '1'),
+            'sensitive_words' => (string) Settings::get('sensitive_words', ''),
             'watermark_enabled' => (string) Settings::get('watermark_enabled', '1'),
             'watermark_text' => (string) Settings::get('watermark_text', ''),
             'watermark_position' => (string) Settings::get('watermark_position', 'br'),
@@ -148,6 +152,9 @@ class SettingsController extends BaseController
         // ── 评论功能 / 评论邮件通知开关 ──
         Settings::set('comments_enabled', !empty($_POST['comments_enabled']) ? '1' : '0');
         Settings::set('comment_notify', !empty($_POST['comment_notify']) ? '1' : '0');
+        Settings::set('comment_image_upload', !empty($_POST['comment_image_upload']) ? '1' : '0');
+        // 敏感词过滤开关（词库文本走上面的 TEXT_KEYS 统一保存）
+        Settings::set('sensitive_filter_enabled', !empty($_POST['sensitive_filter_enabled']) ? '1' : '0');
 
         // ── 表单内发送 SMTP 测试邮件（配置已在上方入库） ──
         if (!empty($_POST['test_email'])) {

@@ -17,6 +17,7 @@ class Url
         'post_detail' => '/post/<int:post_id>',
         'post_view' => '/post/<int:post_id>/view',
         'post_comment' => '/post/<int:post_id>/comment',
+        'comment_upload' => '/comment/upload',
         'project_comment' => '/projects/<int:project_id>/comment',
         'tags' => '/tags',
         'about' => '/about',

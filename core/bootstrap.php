@@ -6,13 +6,23 @@ define('CORE_PATH', __DIR__);
 define('STORAGE_PATH', PHP_BLOG_ROOT . '/storage');
 
 // 配置文件：优先使用安装向导生成的 config.php；缺失时回退示例配置（供向导页面读取默认值）
+$sampleFile = PHP_BLOG_ROOT . '/config/config.sample.php';
 $configFile = PHP_BLOG_ROOT . '/config/config.php';
 if (!is_file($configFile)) {
-    $configFile = PHP_BLOG_ROOT . '/config/config.sample.php';
+    $configFile = $sampleFile;
 }
 define('CONFIG_FILE', $configFile);
 
 $config = require CONFIG_FILE;
+
+// 与示例配置做深合并：升级只会往 config.sample.php 追加新的默认项，老站点的 config.php
+// 不手动补也能立即拿到默认值；用户显式配置过的键以 config.php 为准（不会被默认值覆盖）。
+if ($configFile !== $sampleFile && is_file($sampleFile) && is_array($config)) {
+    $defaults = require $sampleFile;
+    if (is_array($defaults)) {
+        $config = array_replace_recursive($defaults, $config);
+    }
+}
 
 date_default_timezone_set($config['app']['timezone'] ?? 'Asia/Shanghai');
 

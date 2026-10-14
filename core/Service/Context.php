@@ -15,7 +15,7 @@ use Blog\Request;
 class Context
 {
     /** 程序版本号（PHP 版独立版本线） */
-    public const VERSION = '2.6.17';
+    public const VERSION = '2.7.0';
 
     /** 可开关的导航项：(配置 key 后缀, 显示名, 链接)；首页与写作入口为固定项 */
     public const NAV_PAGES = [
@@ -56,6 +56,10 @@ class Context
             'home_posts_count' => Settings::get('home_posts_count', '6'),
             'posts_per_page' => Settings::get('posts_per_page', '20'),
             'comments_enabled' => Settings::get('comments_enabled', '1'),
+            'comment_notify' => Settings::get('comment_notify', '0'),
+            'comment_image_upload' => Comments::imageUploadOn() ? '1' : '0',
+            // 敏感词库 JSON（未启用/为空时为空串）：供 comments.js 实时「输入即变星号」
+            'sensitive_words_json' => Sensitive::json(),
             'icp_beian' => Settings::get('icp_beian', ''),
             'police_beian' => Settings::get('police_beian', ''),
             'stats_code' => self::sanitizeStatsCode((string) Settings::get('stats_code', '')),

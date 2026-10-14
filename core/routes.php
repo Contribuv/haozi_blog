@@ -14,6 +14,7 @@ return [
         ['GET', '/post/<int:post_id>', 'front/PostController@detail'],
         ['POST', '/post/<int:post_id>/view', 'front/PostController@view'],
         ['POST', '/post/<int:post_id>/comment', 'front/PostController@comment'],
+        ['POST', '/comment/upload', 'front/CommentController@upload'],
         ['GET', '/tags', 'front/PostController@tags'],
         ['GET', '/search', 'front/PostController@search'],
         ['GET', '/about', 'front/PageController@about'],

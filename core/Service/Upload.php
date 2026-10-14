@@ -187,26 +187,33 @@ class Upload
      * 位图（png/jpg/bmp/webp/heic/heif）走「压缩 → 备份无痕原图 → 叠水印」管线：
      * - 无痕原图存 uploads/.originals（公网不可达），展示层一律用带水印版本
      * - gif 保留动画不压缩；HEIC/HEIF 因 GD 无解码能力而明确报错
+     *
+     * $maxBytes 为可选的大小上限（字节）；不传则用后台配置的全局上限。
+     * 访客侧的评论图片上传会传入更严格的专用上限（见 CommentImage）。
+     *
+     * $subDir 为可选子目录（相对 uploads/，如 'comment/2026/10'）；不传则按上传时间落 年/月。
+     * $randomize 为 true 时用随机名替代可读原名（访客上传用），避免暴露原文件名与重名冲突。
      */
-    public static function save(array $file, array $allowedExt): array
+    public static function save(array $file, array $allowedExt, ?int $maxBytes = null, ?string $subDir = null, bool $randomize = false): array
     {
+        $max = ($maxBytes !== null && $maxBytes > 0) ? $maxBytes : self::maxSize();
         if (empty($file['name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             return ['', '未选择文件或上传失败'];
         }
-        if (($file['size'] ?? 0) > self::maxSize()) {
-            return ['', '文件过大（上限 ' . self::fmtSize(self::maxSize()) . '）'];
+        if (($file['size'] ?? 0) > $max) {
+            return ['', '文件过大（上限 ' . self::fmtSize($max) . '）'];
         }
         $ext = strtolower((string) pathinfo($file['name'], PATHINFO_EXTENSION));
         $dot = '.' . $ext;
         if (!in_array($dot, $allowedExt, true)) {
             return ['', '不支持的文件类型: ' . $dot];
         }
-        $sub = date('Y/m');
+        $sub = ($subDir !== null && trim($subDir, '/') !== '') ? trim($subDir, '/') : date('Y/m');
         $dir = self::root() . '/' . $sub;
         if (!is_dir($dir) && !mkdir($dir, 0775, true)) {
             return ['', '目录创建失败'];
         }
-        $base = self::safeStem((string) $file['name']);
+        $base = $randomize ? self::randomStem() : self::safeStem((string) $file['name']);
         $filename = $base . '.' . $ext;
         $i = 1;
         while (file_exists($dir . '/' . $filename)) {
@@ -288,6 +295,20 @@ class Upload
         $name = (string) preg_replace('#[\\\\/:\*\?"<>\|]#u', '-', $name);
         $name = trim($name);
         return $name !== '' ? mb_substr($name, 0, 80) : 'file';
+    }
+
+    /**
+     * 随机文件名主干（16 位十六进制，约 2^64 空间）。
+     * 用于访客上传：不信任原始文件名（可能含隐私信息或怪字符），且天然避免重名。
+     */
+    public static function randomStem(): string
+    {
+        try {
+            return bin2hex(random_bytes(8));
+        } catch (\Throwable $e) {
+            // 极端环境拿不到随机源时退回 uniqid，仍保证唯一性
+            return str_replace('.', '', uniqid('', true));
+        }
     }
 
     /**

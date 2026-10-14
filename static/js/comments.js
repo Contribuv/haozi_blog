@@ -381,4 +381,194 @@
       if (e.key === 'Escape') closeEmoji();
     });
   }
+
+  /* ── 9. 图片上传：选本地图 → POST 上传 → 以缩略图卡片展示（正文保持纯文字） ──
+     上传成功后不往输入框塞 ![](url)，而是把 URL 记入隐藏域 images、在下方显示缩略图；
+     用户可继续打字，也能单独删除某张图。提交时由后端合并进评论并做站内白名单校验。 */
+  var imgup = document.getElementById('cmt-imgup');
+  var imgupBtn = document.getElementById('cmt-imgup-btn');
+  var imgupInput = document.getElementById('cmt-imgup-input');
+  var imgupList = document.getElementById('cmt-imgup-list');
+  var imagesInput = document.getElementById('comment-images');
+  if (imgup && imgupBtn && imgupInput && imgupList && imagesInput) {
+    var IMG_MAX = 5 * 1024 * 1024;
+    var IMG_COUNT = 6;   // 与后端 Comments::MAX_IMAGES 保持一致
+    var pendingImages = [];
+
+    // 只接受本站评论上传目录的 URL 才拿来当缩略图，避免异常响应被注入
+    var isLocalUpload = function (u) {
+      return typeof u === 'string' &&
+        /^\/uploads\/comment\/\d{4}\/\d{2}\/[A-Za-z0-9_.\-]+$/.test(u) &&
+        u.indexOf('..') === -1;
+    };
+
+    var syncImagesInput = function () { imagesInput.value = pendingImages.join('\n'); };
+
+    var renderImages = function () {
+      imgupList.innerHTML = '';
+      imgupList.hidden = pendingImages.length === 0;
+      pendingImages.forEach(function (url, idx) {
+        var chip = document.createElement('div');
+        chip.className = 'cmt-imgup-item';
+
+        var img = document.createElement('img');
+        img.alt = '';
+        img.loading = 'lazy';
+        img.src = url;
+        chip.appendChild(img);
+
+        var del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'cmt-imgup-remove';
+        del.setAttribute('aria-label', '删除这张图片');
+        del.textContent = '×';
+        del.addEventListener('click', function () {
+          pendingImages.splice(idx, 1);
+          syncImagesInput();
+          renderImages();
+        });
+        chip.appendChild(del);
+
+        imgupList.appendChild(chip);
+      });
+    };
+
+    var setImgBusy = function (busy) {
+      imgupBtn.disabled = busy;
+      imgupBtn.classList.toggle('is-loading', busy);
+      imgupBtn.setAttribute('aria-expanded', busy ? 'true' : 'false');
+    };
+
+    imgupBtn.addEventListener('click', function () {
+      if (imgupBtn.disabled) return;
+      if (pendingImages.length >= IMG_COUNT) {
+        if (window.toast) window.toast('最多添加 ' + IMG_COUNT + ' 张图片', 'error');
+        return;
+      }
+      imgupInput.value = '';
+      imgupInput.click();
+    });
+
+    imgupInput.addEventListener('change', function () {
+      var f = imgupInput.files && imgupInput.files[0];
+      if (!f) return;
+      if (!/^image\/(png|jpeg|gif|webp)$/.test(f.type)) {
+        if (window.toast) window.toast('仅支持 png / jpg / gif / webp 图片', 'error');
+        return;
+      }
+      if (f.size > IMG_MAX) {
+        if (window.toast) window.toast('图片不能超过 5MB', 'error');
+        return;
+      }
+      var fd = new FormData();
+      fd.append('image', f);
+      setImgBusy(true);
+      fetch('/comment/upload', { method: 'POST', body: fd, credentials: 'same-origin' })
+        .then(function (r) { return r.json().catch(function () { return { error: '上传失败，请稍后再试' }; }); })
+        .then(function (data) {
+          if (data && isLocalUpload(data.url)) {
+            pendingImages.push(data.url);
+            syncImagesInput();
+            renderImages();
+            if (window.toast) window.toast('图片已添加', 'success');
+          } else if (window.toast) {
+            window.toast((data && data.error) || '上传失败', 'error');
+          }
+        })
+        .catch(function () {
+          if (window.toast) window.toast('网络异常，上传失败', 'error');
+        })
+        .then(function () { setImgBusy(false); });
+    });
+  }
+
+  /* ── 10. 网址字段：缺协议时下拉补全 http:// / https://，失焦默认补 https:// ──
+     type=text 不会触发原生 url 校验，故 www.demo.com 也能顺利提交。 */
+  var webInput = document.getElementById('comment-website');
+  var webSuggest = document.getElementById('cmt-website-suggest');
+  if (webInput && webSuggest) {
+    var hasScheme = function (v) { return /^[a-zA-Z][a-zA-Z0-9+.\-]*:\/\//.test(v); };
+    var hideWebSuggest = function () { webSuggest.hidden = true; };
+
+    var renderWebSuggest = function () {
+      var v = webInput.value.trim();
+      if (v === '' || hasScheme(v)) { hideWebSuggest(); return; }
+      webSuggest.innerHTML = '';
+      ['https://', 'http://'].forEach(function (scheme) {
+        var item = document.createElement('div');
+        item.className = 'cmt-suggest-item';
+        item.setAttribute('data-scheme', scheme);
+        item.textContent = '补全为 ' + scheme + v;
+        webSuggest.appendChild(item);
+      });
+      webSuggest.hidden = false;
+    };
+
+    webInput.addEventListener('input', renderWebSuggest);
+    webInput.addEventListener('focus', renderWebSuggest);
+    webInput.addEventListener('blur', function () {
+      setTimeout(hideWebSuggest, 150);
+      // 兜底：失焦仍未写协议则默认补 https://，保证能提交
+      var v = webInput.value.trim();
+      if (v !== '' && !hasScheme(v)) webInput.value = 'https://' + v;
+    });
+    // mousedown 先于 blur：preventDefault 阻止失焦，保证能点到选项
+    webSuggest.addEventListener('mousedown', function (e) {
+      var item = e.target.closest ? e.target.closest('.cmt-suggest-item') : null;
+      if (!item) return;
+      e.preventDefault();
+      var v = webInput.value.trim();
+      if (!hasScheme(v)) webInput.value = item.getAttribute('data-scheme') + v;
+      hideWebSuggest();
+      webInput.focus();
+    });
+  }
+
+  /* ── 11. 敏感词过滤：命中即就地替换为等长星号（词库由后端注入） ──
+     词库挂在表单 data-sensitive-words（JSON）。前端实时拦截只是体验优化、天然可绕过，
+     后端提交时另有兜底过滤（Sensitive::filter），两者共用同一份词库。 */
+  if (textarea && form) {
+    var rawWords = form.getAttribute('data-sensitive-words') || '';
+    var wordRe = null;
+    if (rawWords) {
+      try {
+        var words = JSON.parse(rawWords);
+        if (Object.prototype.toString.call(words) === '[object Array]' && words.length) {
+          words.sort(function (a, b) { return b.length - a.length; });   // 长词优先，保证最长匹配
+          var alts = [];
+          for (var wi = 0; wi < words.length; wi++) {
+            var w = String(words[wi]);
+            if (w) alts.push(w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+          }
+          if (alts.length) wordRe = new RegExp('(' + alts.join('|') + ')', 'g');
+        }
+      } catch (e) { wordRe = null; }
+    }
+
+    if (wordRe) {
+      var stars = function (n) {
+        var s = '';
+        for (var i = 0; i < n; i++) s += '*';
+        return s;
+      };
+      var applyWordFilter = function () {
+        var v = textarea.value;
+        if (!v) return;
+        var nv = v.replace(wordRe, function (m) { return stars(m.length); });
+        if (nv !== v) {
+          var ss = textarea.selectionStart;
+          var se = textarea.selectionEnd;
+          textarea.value = nv;   // 等长替换：长度不变，光标位置无需调整
+          if (typeof ss === 'number') {
+            try { textarea.setSelectionRange(ss, se); } catch (e) {}
+          }
+        }
+      };
+      // 中文输入法组字期间不改 value，否则会打断候选词；组字结束再过滤
+      var composing = false;
+      textarea.addEventListener('compositionstart', function () { composing = true; });
+      textarea.addEventListener('compositionend', function () { composing = false; applyWordFilter(); });
+      textarea.addEventListener('input', function () { if (!composing) applyWordFilter(); });
+    }
+  }
 })();

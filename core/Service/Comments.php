@@ -6,6 +6,7 @@ namespace Blog\Service;
 use Blog\Model\Comment;
 use Blog\Model\Settings;
 use Blog\Request;
+use Blog\Template\Markup;
 
 /**
  * 评论提交公共逻辑（对照原项目 _handle_new_comment，文章 / 项目共用）。
@@ -17,10 +18,145 @@ class Comments
     /** 浏览计数冷却窗口（秒） */
     private const VIEW_COOLDOWN = 60;
 
+    /** 单条评论最多附带的图片张数（前端按钮与后端合并都按此限制） */
+    public const MAX_IMAGES = 6;
+
     /** 评论总开关 */
     public static function open(): bool
     {
         return Settings::bool('comments_enabled', true);
+    }
+
+    /** 评论图片上传总开关（面向访客，后台可一键关闭） */
+    public static function imageUploadOn(): bool
+    {
+        return CommentImage::enabled();
+    }
+
+    /**
+     * 通知/摘要用的纯文本正文：把站内图片标记 ![alt](/uploads/...) 替换为 [图片]，
+     * 避免原始语法出现在邮件通知里。非图片标记原样保留。
+     */
+    public static function plainContent(string $content): string
+    {
+        return (string) preg_replace('#!\[[^\]]*\]\(/uploads/[^\s()<>"\']+\)#u', '[图片]', $content);
+    }
+
+    /**
+     * 邮箱规范化：仅输入纯数字 QQ 号（5~12 位）时自动补全为 @qq.com。
+     * 前端提交前已补一次，这里是后端兜底 —— 禁用 JS、直连 POST、脚本异常时同样成立，
+     * 避免出现「存进库的邮箱不是合法邮箱」或误报格式错误。
+     * 与 Avatar::qqFromEmail 的数字位数保持一致。
+     */
+    public static function normalizeEmail(string $email): string
+    {
+        $email = trim($email);
+        return preg_match('/^\d{5,12}$/', $email) === 1 ? $email . '@qq.com' : $email;
+    }
+
+    /**
+     * 规范化评论网址字段：
+     * - 空串原样返回空串；
+     * - 缺少协议时按 https 自动补齐（www.demo.com → https://www.demo.com）；
+     * - 最终必须是 http/https 开头且不超过 200 字符，否则返回 null（调用方据此报错）。
+     * 前端下拉补全之外再兜一层，兼容直接 POST / 非浏览器提交。
+     */
+    public static function normalizeWebsite(string $website): ?string
+    {
+        $website = trim($website);
+        if ($website === '') {
+            return '';
+        }
+        // 已带 scheme:// 形式：只接受 http / https
+        if (preg_match('#^([a-zA-Z][a-zA-Z0-9+.\-]*)://#', $website, $m)) {
+            $scheme = strtolower($m[1]);
+            if ($scheme !== 'http' && $scheme !== 'https') {
+                return null;
+            }
+        } elseif (preg_match('#^[a-zA-Z][a-zA-Z0-9+.\-]*:#', $website)) {
+            // 形如 scheme:... 但无 //：若冒号前不含点，视为危险/非 http 协议（javascript:、mailto: 等）直接拒绝；
+            // 含点则视作 host:port（如 demo.com:8080），照常补协议
+            $scheme = (string) strstr($website, ':', true);
+            if ($scheme === '' || strpos($scheme, '.') === false) {
+                return null;
+            }
+            $website = 'https://' . $website;
+        } else {
+            $website = 'https://' . $website;
+        }
+        if (!preg_match('#^https?://\S+$#i', $website) || mb_strlen($website) > 200) {
+            return null;
+        }
+        return $website;
+    }
+
+    /**
+     * 评论正文渲染：默认整体 HTML 转义，仅把「站内图片标记」还原为 <img>。
+     *
+     * 标记形如 ![图片](/uploads/2026/10/xxx.png)：上传成功后由前端插入，也允许用户手动书写。
+     * 只认 /uploads/ 下、扩展名在 CommentImage::EXT 白名单内的本地图片 —— 外链图床、
+     * data: 等一律不渲染（保持转义文本），从源头排除盗链、追踪像素与 SVG 脚本。
+     * 返回 Markup，供模板以 | safe 原样输出。
+     */
+    public static function renderContent(string $content): Markup
+    {
+        $escaped = htmlspecialchars($content, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+        $html = (string) preg_replace_callback(
+            '#!\[([^\]]*)\]\((/uploads/[^\s()<>"\']+)\)#u',
+            static function (array $m): string {
+                $path = (string) parse_url($m[2], PHP_URL_PATH);
+                $ext = strtolower((string) pathinfo($path, PATHINFO_EXTENSION));
+                if ($ext === '' || !in_array('.' . $ext, CommentImage::EXT, true)) {
+                    return $m[0]; // 非白名单图片：保持转义原样，不生成标签
+                }
+                return '<img class="cmt-img" src="' . $m[2] . '" alt="' . $m[1] . '" loading="lazy">';
+            },
+            $escaped
+        );
+        return new Markup($html);
+    }
+
+    /**
+     * 把「已上传图片」隐藏域的内容合并进正文。
+     *
+     * 前端图片上传后不再往输入框插标记，而是把 URL 记入隐藏域 images（每行一个），
+     * 提交时在此统一追加为 ![图片](url) 标记（渲染层 renderContent 会再校验一次）。
+     * 安全约束：只认评论上传目录（/uploads/comment/年/月/）、白名单扩展名且文件真实存在，
+     * 去重并限制张数 —— 攻击者即使伪造 images 也无法引用任意站内文件或外部地址。
+     */
+    private static function mergeImages(string $content, string $raw): string
+    {
+        $raw = trim($raw);
+        if ($raw === '') {
+            return $content;
+        }
+        $urls = [];
+        foreach (preg_split('/[\r\n]+/', $raw) ?: [] as $line) {
+            $u = trim($line);
+            if ($u === '' || !preg_match('#^/uploads/comment/\d{4}/\d{2}/[A-Za-z0-9_.\-]+$#', $u)) {
+                continue;
+            }
+            $ext = '.' . strtolower((string) pathinfo($u, PATHINFO_EXTENSION));
+            if (!in_array($ext, CommentImage::EXT, true)) {
+                continue;
+            }
+            // 文件必须真实存在（resolve 内含 realpath 越权校验），防止伪造不存在的路径入库
+            if (Upload::resolve((string) substr($u, strlen('/uploads/'))) === null) {
+                continue;
+            }
+            $urls[$u] = true;
+            if (count($urls) >= self::MAX_IMAGES) {
+                break;
+            }
+        }
+        if ($urls === []) {
+            return $content;
+        }
+        $markers = [];
+        foreach (array_keys($urls) as $u) {
+            $markers[] = '![图片](' . $u . ')';
+        }
+        return rtrim($content) . "\n" . implode("\n", $markers);
     }
 
     /**
@@ -66,9 +202,18 @@ class Comments
             return $back;
         }
 
+        // 敏感词兜底过滤：前端已把命中词实时替换为等长星号，这里防止禁用 JS / 直连 POST 绕过
+        $content = Sensitive::filter($content);
+
+        // 合并评论图片：前端上传成功后把图片 URL 放进隐藏域 images（每行一个），
+        // 这里只接受本站评论上传目录、白名单扩展名且确实存在的图片，去重后追加为标记
+        $content = self::mergeImages($content, (string) Request::post('images', ''));
+
         $emailHash = '';
         $qq = '';
         if ($email !== '') {
+            // 纯数字 QQ 号兜底补全 @qq.com（前端已补，此处防禁用 JS / 直连提交）
+            $email = self::normalizeEmail($email);
             if (!preg_match('/^[^@\s]+@[^@\s]+\.[^@\s]+$/', $email)) {
                 Flash::error('邮箱格式不正确（选填，仅用于头像）');
                 return $back;
@@ -77,10 +222,12 @@ class Comments
             $qq = Avatar::qqFromEmail($email);
         }
         if ($website !== '') {
-            if (!preg_match('#^https?://\S+$#', $website) || mb_strlen($website) > 200) {
+            $normalized = self::normalizeWebsite($website);
+            if ($normalized === null) {
                 Flash::error('网址格式不正确（需以 http:// 或 https:// 开头）');
                 return $back;
             }
+            $website = $normalized;
         }
 
         // 父级校验：必须属于同一载体

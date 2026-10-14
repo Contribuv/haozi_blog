@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Blog\Model;
 
 use Blog\Service\Avatar;
+use Blog\Service\Comments;
 
 /**
  * 评论数据模型（关联文章或项目），对照 db_load_comments / db_save_comment / db_delete_comment。
@@ -94,6 +95,8 @@ class Comment extends Model
                 $c['avatar_fallback'] = '';
             }
             $c['avatar_default'] = $avatarDefault;
+            // 正文渲染：整体转义 + 仅还原站内图片标记（见 Comments::renderContent）
+            $c['content_html'] = Comments::renderContent((string) $c['content']);
             // 明文邮箱仅用于回复通知，不出现在渲染上下文
             unset($c['email']);
             $comments[] = $c;

@@ -79,11 +79,12 @@ class Notify
             // 2) 通知被回复者（仅已通过评论；待审核的由审核通过后补发）
             if ($reply && $status === 'approved') {
                 $row = Db::query('SELECT author, email FROM comments WHERE id = ?', [$parentId])->fetch();
-                if ($row && !empty($row['email'])) {
-                    $pe = strtolower((string) $row['email']);
+                $parentEmail = $row ? (string) ($row['email'] ?? '') : '';
+                if ($parentEmail !== '') {
+                    $pe = strtolower($parentEmail);
                     if (!in_array($pe, $bloggerEmails, true) && $pe !== $commenterLower) {
                         Mail::send(
-                            (string) $row['email'],
+                            $parentEmail,
                             '[' . self::blogName() . '] 你的评论收到新回复' . $label . '《' . $title . '》',
                             self::html('你的评论收到一条新回复', $title, $postUrl, $author, $content, $label)
                         );
@@ -113,11 +114,12 @@ class Notify
                 return;
             }
             $parent = Db::query('SELECT author, email FROM comments WHERE id = ?', [(int) $row['parent_id']])->fetch();
-            if (!$parent || empty($parent['email'])) {
+            $parentEmail = $parent ? (string) ($parent['email'] ?? '') : '';
+            if ($parentEmail === '') {
                 return;
             }
             [, $bloggerEmails] = self::bloggerEmails();
-            $pe = strtolower((string) $parent['email']);
+            $pe = strtolower($parentEmail);
             if (in_array($pe, $bloggerEmails, true)) {
                 return;
             }
@@ -135,7 +137,7 @@ class Notify
             }
             $postUrl = rtrim($baseUrl, '/') . $detailPath;
             Mail::send(
-                (string) $parent['email'],
+                $parentEmail,
                 '[' . self::blogName() . '] 你的评论收到新回复' . $label . '《' . $title . '》',
                 self::html('你的评论收到一条新回复', $title, $postUrl, (string) $row['author'], (string) $row['content'], $label)
             );
@@ -159,7 +161,7 @@ class Notify
             . '<div class="cta-wrap"><a class="cta" href="' . $e($postUrl) . '">查看详情</a></div>'
             . '<div class="quote">'
             . '<div class="q-author"><span class="q-avatar">' . $e($av) . '</span>' . $e($author !== '' ? $author : '匿名') . '</div>'
-            . '<div class="q-content">' . $e($content) . '</div>'
+            . '<div class="q-content">' . $e(Comments::plainContent($content)) . '</div>'
             . '</div></div></div>'
             . '<div class="foot">本邮件由 ' . $e($blogName) . ' 自动发送，请勿直接回复。</div>'
             . '</div></body></html>';

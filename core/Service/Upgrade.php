@@ -80,6 +80,12 @@ class Upgrade
         return PHP_BLOG_ROOT . '/data/upgrade_sources.json';
     }
 
+    /** 版本相同时的「公平竞争」偏好文件：记录上次选中的来源，用于轮询 */
+    private static function preferFile(): string
+    {
+        return PHP_BLOG_ROOT . '/data/upgrade_prefer.txt';
+    }
+
     /**
      * 双平台可用性状态：['github' => ['ok'=>bool,'checked'=>int,'fails'=>int], 'gitee' => 同]。
      * ok=false 且仍在 BREAK_SECONDS 窗口内即视为「熔断」，调用时直接跳过，
@@ -567,31 +573,61 @@ class Upgrade
      * 查询双平台并取「版本最高」者。
      * 关键：绝不能「谁先成功就用谁」——GitHub 一旦返回结果就 break，会让 Gitee 上的
      * 更高版本永远检测不到（反之亦然），表现为「更新只从 GitHub 获取」。
-     * 两个平台各查一次、按版本号取高；都失败返回 null。结果里的 source 标明来源。
+     * 两个平台各查一次：版本不同取高；**版本相同则公平竞争（轮询平台）**，避免在
+     * 两平台都可用且同步发版时永远只命中 GitHub。都失败返回 null，结果里的 source 标明来源。
      */
     private static function bestOfSources(bool $ignoreBreak = false): ?array
     {
         $gitee = self::giteeRepo();
-        $best = null;
+        $found = [];
         foreach (self::order($ignoreBreak) as $src) {
             if ($src === 'gitee' && $gitee === '') {
                 continue;
             }
             $info = $src === 'github' ? self::githubLatest(self::githubRepo()) : self::giteeLatest($gitee);
             self::markSource($src, $info !== null);
-            if ($info === null) {
-                continue;
-            }
-            // 版本号逐段比较取高；相等时保留先到的那个（顺序里健康的平台在前）
-            if ($best === null || version_compare(
-                self::versionString($info['version']),
-                self::versionString($best['version']),
-                '>'
-            )) {
-                $best = $info;
+            if ($info !== null) {
+                $found[$src] = $info;
             }
         }
-        return $best;
+        if ($found === []) {
+            return null;
+        }
+        $gh = $found['github'] ?? null;
+        $gt = $found['gitee'] ?? null;
+        // 仅一个平台有结果：直接用它
+        if ($gh === null || $gt === null) {
+            return $gh ?? $gt;
+        }
+        // 两平台都有结果：版本高者优先
+        $cmp = version_compare(self::versionString($gh['version']), self::versionString($gt['version']));
+        if ($cmp > 0) {
+            return $gh;
+        }
+        if ($cmp < 0) {
+            return $gt;
+        }
+        // 版本相同（两平台同步发版）：公平竞争，轮流选平台
+        return self::alternate($gh, $gt);
+    }
+
+    /**
+     * 双平台版本相同时的「公平竞争」：交替选择来源。
+     * 此前固定「保留先到的 GitHub」，两平台同步发版时会永远只走 GitHub；
+     * 这里按上次选择轮询到另一个平台，让两边流量均衡、也顺带轮流验证两条下载链。
+     */
+    private static function alternate(array $gh, array $gt): array
+    {
+        $file = self::preferFile();
+        $last = is_file($file) ? trim((string) @file_get_contents($file)) : '';
+        // 上次选 github 这次就选 gitee，反之亦然；首次选 github（保持与旧版一致的起始行为）
+        $pick = $last === 'github' ? 'gitee' : 'github';
+        $dir = dirname($file);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        @file_put_contents($file, $pick, LOCK_EX);
+        return $pick === 'gitee' ? $gt : $gh;
     }
 
     /** Releases 说明 Markdown → 纯文本（升级页展示）。彻底剥离 HTML，杜绝 XSS */
