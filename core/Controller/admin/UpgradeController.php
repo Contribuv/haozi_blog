@@ -43,6 +43,9 @@ class UpgradeController extends BaseController
         }
 
         $tag = (string) $info['tag'];
+        // 版本检测结果里记录了这份信息来自哪个平台：升级时优先从该平台下载源码包，
+        // 避免检测说 Gitee 可用、下载却先去盲试 GitHub 直连（超时/404 白耗数秒还误标熔断）
+        $preferred = (string) ($info['source'] ?? '');
         // 先自己把进度置为 running 再拉起后台进程：前端轮询立刻有反馈，也顺带充当「正在升级」的互斥标记
         Upgrade::clearProgress();
         Upgrade::clearCancel();
@@ -51,7 +54,7 @@ class UpgradeController extends BaseController
         Upgrade::clearLock();
         Upgrade::writeProgress(['state' => 'running', 'phase' => 'spawn', 'label' => '正在启动升级进程…', 'percent' => -1]);
 
-        if (Upgrade::spawnWorker($tag)) {
+        if (Upgrade::spawnWorker($tag, $preferred)) {
             // 释放 session 排他锁后即返回；真正的升级与进度写入都在后台进程里
             if (session_status() === PHP_SESSION_ACTIVE) {
                 session_write_close();
@@ -65,7 +68,7 @@ class UpgradeController extends BaseController
         }
         @set_time_limit(0);
         ignore_user_abort(true);
-        [$ok, $msg] = Upgrade::doUpgrade($tag);
+        [$ok, $msg] = Upgrade::doUpgrade($tag, $preferred);
         Response::json(['ok' => $ok, 'message' => $msg]);
     }
 

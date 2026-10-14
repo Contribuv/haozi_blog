@@ -7,7 +7,7 @@
  * 前端照常轮询 /admin/upgrade/progress 显示。
  *
  * 用法：
- *   php bin/upgrade_worker.php <tag>     如 php bin/upgrade_worker.php 1.2.3
+ *   php bin/upgrade_worker.php <tag> [首选下载平台]     如 php bin/upgrade_worker.php 1.2.3 gitee
  */
 
 declare(strict_types=1);
@@ -27,13 +27,15 @@ if ($tag === '') {
     fwrite(STDERR, "缺少版本 tag\n");
     exit(1);
 }
+// 版本检测出更新来自哪个平台（github/gitee），下载就优先走哪个；空串则按健康状态自动排
+$preferred = $argv[2] ?? '';
 
 // 后台进程无人盯着，跑多久都得撑住
 @set_time_limit(0);
 ignore_user_abort(true);
 
 // doUpgrade 内部自会写 running/终态进度并维护升级锁，此处只需等它跑完
-$result = Upgrade::doUpgrade($tag);
+$result = Upgrade::doUpgrade($tag, $preferred);
 if (($result[0] ?? false) !== true) {
     fwrite(STDERR, ($result[1] ?? '升级失败') . "\n");
     exit(1);

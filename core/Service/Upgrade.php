@@ -211,7 +211,7 @@ class Upgrade
      * 以独立后台进程启动升级，脱离 HTTP 请求：PHP-FPM worker 立即释放，其它访客不再排队。
      * 返回 false 表示当前环境无法起后台进程（如 disable_functions 禁了 exec），调用方需回退为同步执行。
      */
-    public static function spawnWorker(string $tag): bool
+    public static function spawnWorker(string $tag, string $preferredSource = ''): bool
     {
         // disable_functions 禁掉 exec 时 function_exists 仍返回 true，只认它会「假启动」：
         // 接口回 ok=true、前端开始轮询，而后台进程从未跑起来
@@ -233,9 +233,12 @@ class Upgrade
         if (!is_dir($logDir)) {
             @mkdir($logDir, 0775, true);
         }
-        // 参数一律 escapeshellarg；nice 压低 CPU 优先级，少抢前台。末尾 & 让 exec 立即返回
+        // 参数一律 escapeshellarg；nice 压低 CPU 优先级，少抢前台。末尾 & 让 exec 立即返回。
+        // 第二参数为首选下载平台（版本检测结果里哪个平台有包），worker 据此决定下载顺序
         $cmd = 'nohup nice -n 10 ' . escapeshellarg($php) . ' ' . escapeshellarg($script)
-            . ' ' . escapeshellarg($tag) . ' >> ' . escapeshellarg($log) . ' 2>&1 &';
+            . ' ' . escapeshellarg($tag)
+            . ($preferredSource !== '' ? ' ' . escapeshellarg($preferredSource) : '')
+            . ' >> ' . escapeshellarg($log) . ' 2>&1 &';
         @exec($cmd);
         // exec 无法可靠得知子进程是否起活，交给进度轮询兜底（isRunning 据进度判断）
         return true;
@@ -608,7 +611,7 @@ class Upgrade
      * 执行升级：数据备份 → 下载 → 解压 → 校验 → 覆盖代码。
      * 返回 [成功标志, 消息]。
      */
-    public static function doUpgrade(string $tag): array
+    public static function doUpgrade(string $tag, string $preferredSource = ''): array
     {
         $lock = self::lockFile();
         // 过期锁（上次异常中断残留）自动清理，避免永久卡「升级进行中」
@@ -650,14 +653,17 @@ class Upgrade
             // 备份不可中断，只能整段跑完后才检查取消；此时取消，备份已留在磁盘但代码未动
             self::abortIfCancelled();
 
-            // 2. 下载源码压缩包（直连优先 → 加速镜像 → Gitee 归档包）
+            // 2. 下载源码压缩包
+            //    检测更新时已知道哪个平台返回了这份版本信息（$preferredSource），就优先从该平台
+            //    下载——否则 Gitee 独有的新 tag 也要先白试一遍 GitHub 直连+镜像（超时/404 各耗
+            //    数秒），还顺带误标 GitHub 熔断。download() 内部仍保留完整 fallback 链兜底。
             //    Gitee 的直连归档路径是 /repository/archive/{ref}.zip，写成 /archive/{ref}.zip 会 404
             self::writeProgress(['phase' => 'download', 'label' => '正在下载源码包…', 'percent' => -1]);
             $zipUrl = 'https://github.com/' . self::githubRepo() . '/archive/refs/tags/v' . $tag . '.zip';
             $alt = self::giteeRepo() !== ''
                 ? ['https://gitee.com/' . self::giteeRepo() . '/repository/archive/v' . $tag . '.zip']
                 : [];
-            $zipPath = self::download($zipUrl, $tmp . '/release.zip', $alt);
+            $zipPath = self::download($zipUrl, $tmp . '/release.zip', $alt, $preferredSource);
 
             // 3. 安全解压
             self::abortIfCancelled();
@@ -724,36 +730,61 @@ class Upgrade
         }
     }
 
-    /** 尝试直连 → 镜像 → 备用源，全部失败抛最后一个错误 */
-    private static function download(string $url, string $dest, array $altUrls = []): string
+    /**
+     * 按顺序尝试各下载源，全部失败抛出汇总了每个源原因的异常。
+     * $preferredSource 为版本检测出的来源平台（'github'/'gitee'），把它排到最前：
+     * 检测时该平台刚成功返回过数据，从它下载成功率最高，避免对不通的平台白耗超时。
+     */
+    private static function download(string $url, string $dest, array $altUrls = [], string $preferredSource = ''): string
     {
         $githubChain = array_merge([$url], array_map(static fn (string $m): string => $m . $url, self::mirrors()));
-        // GitHub 处于熔断窗口时，把备用源（Gitee）提到最前，省掉十几秒的连接超时空等
-        $attempts = self::broken('github', self::sourceState())
-            ? array_merge($altUrls, $githubChain)
-            : array_merge($githubChain, $altUrls);
+        if ($preferredSource === 'gitee') {
+            // 检测结果是 Gitee 给的（GitHub 大概率不通或没有这个 tag）：Gitee 归档放最前
+            $attempts = array_merge($altUrls, $githubChain);
+        } elseif ($preferredSource === 'github') {
+            $attempts = array_merge($githubChain, $altUrls);
+        } else {
+            // 无首选信息时按健康状态排：GitHub 处于熔断窗口则 Gitee 提前，省掉连接超时空等
+            $attempts = self::broken('github', self::sourceState())
+                ? array_merge($altUrls, $githubChain)
+                : array_merge($githubChain, $altUrls);
+        }
         $lastErr = null;
+        $errors = [];
         foreach ($attempts as $u) {
             // 上一轮下载可能因用户取消而中断，换源前先确认没被取消
             self::abortIfCancelled();
             $isDirectGithub = ($u === $url);
             $isGitee = str_contains($u, 'gitee.com');
+            $label = $isGitee ? 'Gitee' : ($isDirectGithub ? 'GitHub' : '镜像');
+            // Gitee 对冷门 tag 的归档请求会现打包：返回 HTTP 200 +「正在打包」HTML 中间页，
+            // 打包通常几秒~几十秒完成，等几秒重试即可拿到真 zip——不重试的话整个升级直接失败
+            $tries = $isGitee ? 3 : 1;
             try {
-                self::streamDownload($u, $dest);
-                // Gitee 在「需要打包」时会返回 HTML 中间页（HTTP 200），必须确认拿到的是真 zip，
-                // 否则会把中间页当成功，后续解压才报错、也不会再尝试下一个源
-                if (!self::looksLikeZip($dest)) {
-                    throw new \RuntimeException('下载内容不是 zip 压缩包（可能是中间页或错误页）');
+                for ($i = 1; $i <= $tries; $i++) {
+                    try {
+                        self::streamDownload($u, $dest);
+                        // 必须确认拿到的是真 zip：中间页 / 错误页都是 HTTP 200
+                        if (self::looksLikeZip($dest)) {
+                            if ($isDirectGithub) {
+                                self::markSource('github', true);
+                            }
+                            if ($isGitee) {
+                                self::markSource('gitee', true);
+                            }
+                            return $dest;
+                        }
+                        $lastErr = new \RuntimeException('响应不是 zip 压缩包（' . ($isGitee ? 'Gitee 正在打包，' : '') . '已等待重试 ' . ($i - 1) . ' 次）');
+                    } catch (\Throwable $e) {
+                        $lastErr = $e;
+                    }
+                    if ($i < $tries) {
+                        self::abortIfCancelled();
+                        sleep(3);
+                    }
                 }
-                if ($isDirectGithub) {
-                    self::markSource('github', true);
-                }
-                if ($isGitee) {
-                    self::markSource('gitee', true);
-                }
-                return $dest;
+                throw $lastErr ?? new \RuntimeException('下载失败');
             } catch (\Throwable $e) {
-                $lastErr = $e;
                 // 只按「直连」结果熔断：加速镜像失败不代表该平台本身不可用
                 if ($isDirectGithub) {
                     self::markSource('github', false);
@@ -761,12 +792,14 @@ class Upgrade
                 if ($isGitee) {
                     self::markSource('gitee', false);
                 }
+                $errors[] = $label . '：' . mb_substr($e->getMessage(), 0, 120);
                 if (is_file($dest)) {
                     @unlink($dest);
                 }
             }
         }
-        throw $lastErr ?? new \RuntimeException('下载失败');
+        // 汇总每个源各自的失败原因，排障时不用再猜卡在哪一跳
+        throw new \RuntimeException('所有下载源均失败 — ' . implode('；', $errors));
     }
 
     /** 本地文件是否为 zip（校验文件头魔数） */

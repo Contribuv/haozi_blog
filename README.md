@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.15-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.16-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,17 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.6.15**
+当前版本：**2.6.16**
+
+### 从 2.6.15 升级到 2.6.16
+
+# Release Notes v2.6.16
+
+- **Version bump**: `Context::VERSION` 更新至 `2.6.16`。
+- **修复（检测与下载联动）**: 版本检测已知道更新来自哪个平台（`source`），但下载仍从 GitHub 直连开始盲试——Gitee 独有的新 tag 会先白耗 GitHub 直连超时 + 镜像 404 两跳，还顺带误标 GitHub 熔断。现在检测出的来源平台（github/gitee）作为首选下载源一路传导到 worker（`doUpgrade($tag, $preferredSource)`），其余源保留完整 fallback 链兜底。
+- **修复（Gitee 打包中间页无重试）**: Gitee 对刚发布的冷门 tag 归档请求会现打包，返回 HTTP 200 + HTML「正在打包」中间页；原代码判为非 zip 后直接整体升级失败（这正是「正在下载源码包…→ 下载失败」的典型场景）。现在 Gitee 源等 3 秒重试最多 3 次，重试前检查取消标记。
+- **优化（失败原因汇总）**: 所有下载源均失败时，错误信息汇总每一跳的具体原因（GitHub / 镜像 / Gitee 各自卡在哪），前端浮窗直接可见，不再只抛最后一个错误。
+- **升级动作**: 本版无数据库结构与 Nginx 配置变更，直接替换代码即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
 
 ### 从 2.6.14 升级到 2.6.15
 
