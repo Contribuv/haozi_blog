@@ -1707,6 +1707,10 @@ html { touch-action: manipulation; }
 /* 通用隐藏类：置于末尾以按顺序压过后文同特异度的 display 声明（如 .tech-link-avatar） */
 .hidden { display: none; }</style></head>
 <body>
+    
+    
+    <div class="tech-reading-progress" id="readingProgress" data-reading-target=".tech-main" aria-hidden="true"></div>
+    
     <a href="#main-content" class="skip-link">跳到主要内容</a>
 
     <!-- 导航 -->
@@ -1836,7 +1840,7 @@ X-CSRF: <span class="hl-error">rejected</span></pre>
     </button>
 
     <script src="/themes/tech/theme.js?t=1792070027" defer></script>
-    <script src="/static/js/disable-zoom.js?t=v2.7.3"></script>
+    <script src="/static/js/disable-zoom.js?t=v2.7.4"></script>
     <script>
     // 项目页「反馈」按钮：点击平滑滚动到评论区并聚焦输入框
     (function () {

@@ -45,6 +45,12 @@
     {% endif %}
 </head>
 <body>
+    {# 阅读/滚动进度条：文章页与项目页在各自模板里指定「正文」锚点；
+       其余长页面（首页、文章列表、标签、搜索、归档等）用主内容区兜底。
+       内容不足一屏的短页面进度恒为 0、不可见，不会带来干扰。 #}
+    {% if not (request.path.startswith('/post/') or request.path.startswith('/projects/')) %}
+    <div class="tech-reading-progress" id="readingProgress" data-reading-target=".tech-main" aria-hidden="true"></div>
+    {% endif %}
     <a href="#main-content" class="skip-link">跳到主要内容</a>
 
     <!-- 导航 -->

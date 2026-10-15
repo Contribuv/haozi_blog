@@ -18,6 +18,11 @@ class Upgrade
     public const MAX_BYTES = 209715200;
     /** 升级锁超时（秒）：超过视为上次异常中断，自动清理后允许重试 */
     public const LOCK_TTL = 300;
+    /**
+     * 取消宽限（秒）：用户已请求取消、但进程心跳在这段时间内毫无推进，
+     * 说明取消标记没人消费（进程卡死或被系统杀掉），可判定为中断并就地收敛。
+     */
+    public const CANCEL_GRACE = 45;
     /** 版本检测缓存有效期（秒） */
     public const CACHE_TTL = 600;
     /** 平台失败后的熔断窗口（秒）：窗口内直接跳过该平台，不再干等连接超时 */
@@ -202,15 +207,11 @@ class Upgrade
         return PHP_BLOG_ROOT . '/upgrade.lock';
     }
 
-    /** 是否已有升级在进行：进度处于 running 且未超出锁有效期（进程被杀时不致永久误判） */
+    /** 是否已有升级在进行：进度处于 running 且未判定为已中断（进程被杀时不致永久误判） */
     public static function isRunning(): bool
     {
         $p = self::progress();
-        if (($p['state'] ?? '') !== 'running') {
-            return false;
-        }
-        $ts = (int) ($p['ts'] ?? 0);
-        return $ts > 0 && (time() - $ts) <= self::LOCK_TTL;
+        return ($p['state'] ?? '') === 'running' && empty($p['stale']);
     }
 
     /**
@@ -313,8 +314,8 @@ class Upgrade
             self::clearCancel();
             return [true, '当前没有正在进行的升级'];
         }
-        $ts = (int) ($p['ts'] ?? 0);
-        if ($ts <= 0 || (time() - $ts) > self::LOCK_TTL) {
+        // 心跳过期（含「已请求取消但迟迟没人消费」）：进程多半已死，就地收敛为终态
+        if (!empty($p['stale'])) {
             self::clearCancel();
             self::clearLock();
             self::writeProgress([
@@ -410,7 +411,7 @@ class Upgrade
     /** 读取当前升级进度；无进度文件或内容损坏时返回 idle */
     public static function progress(): array
     {
-        $idle = ['state' => 'idle', 'phase' => '', 'label' => '', 'percent' => -1, 'ts' => 0, 'stale' => false];
+        $idle = ['state' => 'idle', 'phase' => '', 'label' => '', 'percent' => -1, 'ts' => 0, 'stale' => false, 'cancel_requested' => false, 'cancel_at' => 0];
         $file = self::progressFile();
         if (!is_file($file)) {
             return $idle;
@@ -419,11 +420,19 @@ class Upgrade
         if (!is_array($d)) {
             return $idle;
         }
+        // 取消标记一并透出：前端刷新后仍能知道「已点过取消」，据此显示「正在取消…」而不是又弹回升级中
+        $cancelFile = self::cancelFile();
+        $cancelled = is_file($cancelFile);
+        $cancelAt = $cancelled ? ((int) @file_get_contents($cancelFile) ?: (int) @filemtime($cancelFile)) : 0;
+        $ts = (int) ($d['ts'] ?? 0);
         // running 但心跳已过期：进程多半被系统杀掉（FPM 重启 / request_terminate_timeout 到点），
-        // 前端据此不再无限等待、也不再反复把浮窗弹回来
-        $d['stale'] = ($d['state'] ?? '') === 'running'
-            && (int) ($d['ts'] ?? 0) > 0
-            && (time() - (int) $d['ts']) > self::LOCK_TTL;
+        // 前端据此不再无限等待、也不再反复把浮窗弹回来。
+        // 另外：已请求取消、但心跳在 CANCEL_GRACE 秒内毫无推进，说明取消标记没人消费（进程同样卡死/已退出），
+        // 同样按「已中断」收敛，避免前端永远停在「正在取消…」、刷新后又回到升级中。
+        $d['stale'] = ($d['state'] ?? '') === 'running' && $ts > 0
+            && ((time() - $ts) > self::LOCK_TTL || ($cancelled && (time() - $ts) > self::CANCEL_GRACE));
+        $d['cancel_requested'] = $cancelled;
+        $d['cancel_at'] = $cancelAt;
         return $d;
     }
 
@@ -777,10 +786,11 @@ class Upgrade
         if ($preferredSource === 'gitee') {
             // 检测结果是 Gitee 给的（GitHub 大概率不通或没有这个 tag）：Gitee 归档放最前
             $attempts = array_merge($altUrls, $githubChain);
-        } elseif ($preferredSource === 'github') {
+        } elseif ($preferredSource === 'github' && !self::broken('github', self::sourceState())) {
             $attempts = array_merge($githubChain, $altUrls);
         } else {
-            // 无首选信息时按健康状态排：GitHub 处于熔断窗口则 Gitee 提前，省掉连接超时空等
+            // 无首选信息、或首选的 GitHub 正处于熔断窗口（版本检测缓存的 source 可能已过时）：
+            // 按健康状态排，GitHub 熔断时把可用的 Gitee 提到最前，省掉对不通的直连 + 慢速镜像白等超时
             $attempts = self::broken('github', self::sourceState())
                 ? array_merge($altUrls, $githubChain)
                 : array_merge($githubChain, $altUrls);

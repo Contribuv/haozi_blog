@@ -219,19 +219,30 @@
                 .then(function (p) {
                     if (!upgrading || !p) return;
                     if (p.state === 'running') {
-                        // 心跳过期（判据由服务端按 Upgrade::LOCK_TTL 给出）＝后台进程多半已被系统杀掉。
-                        // 此时无限等待没有意义，转「已中断」态给出清除入口
+                        // 心跳过期（判据由服务端按 Upgrade::LOCK_TTL / 取消宽限给出）＝后台进程多半已被系统杀掉、
+                        // 或取消标记没人消费。此时无限等待没有意义，转「已中断」态给出清除入口
                         if (p.stale) {
-                            paintInterrupted('后台升级进程长时间无响应，多半已被服务器重启或超时限制终止。');
+                            paintInterrupted(p.cancel_requested
+                                ? '取消请求已提交，但后台进程已无响应。'
+                                : '后台升级进程长时间无响应，多半已被服务器重启或超时限制终止。');
                             return;
                         }
-                        // 已提交取消，但过了 45 秒心跳仍停在取消提交之前：说明进程没再干活、标记多半没人消费。
-                        // 若心跳一直在推进（比如正在备份，打点每 2 秒一次），说明进程还活着，继续等它到检查点自行中止
-                        if (cancelSentAt && (Date.now() / 1000 - cancelSentAt) > 45 && (p.ts || 0) <= cancelSentAt) {
+                        // 取消提交时刻：优先用服务端记录（刷新后仍在），回退到本次会话提交的时间。
+                        // 过了 45 秒心跳仍停在取消提交之前：说明进程没再干活、标记多半没人消费
+                        var cancelAt = (p.cancel_requested && p.cancel_at) ? p.cancel_at : cancelSentAt;
+                        if (cancelAt && (Date.now() / 1000 - cancelAt) > 45 && (p.ts || 0) <= cancelAt) {
                             paintInterrupted('取消请求已提交，但后台进程已无响应。');
                             return;
                         }
                         paintProgress(p);
+                        // 已请求取消但进程仍在收尾：把浮窗切到「正在取消」，刷新后据服务端状态保持一致，
+                        // 不再出现「点了取消、一刷新又回到升级中」的观感
+                        if (p.cancel_requested) {
+                            cancelBtn.disabled = true;
+                            cancelBtn.textContent = '正在取消…';
+                            phaseEl.textContent = '正在取消升级…';
+                            hintEl.textContent = '正在等待当前步骤结束，请稍候';
+                        }
                         return;
                     }
                     // armed 之前忽略终态：否则本次启动前残留的旧进度（上次 done/failed）会被误当「刚结束」
@@ -326,7 +337,8 @@
                     upgrading = true;
                     finished = false;
                     interrupted = false;
-                    cancelSentAt = 0;
+                    // 若服务端记录着取消请求，刷新后据此恢复「正在取消」态（含 45 秒无响应的判定）
+                    cancelSentAt = (p.cancel_requested && p.cancel_at) ? p.cancel_at : 0;
                     armed = true; // 刷新页面恢复时无本次启动响应，直接采信进度
                     recheckBtn.disabled = true;
                     setUpgradeButtons(false);
@@ -335,6 +347,12 @@
                     cancelBtn.textContent = '取消升级';
                     pollTimer = setInterval(poll, 800);
                     paintProgress(p);
+                    if (p.cancel_requested) {
+                        cancelBtn.disabled = true;
+                        cancelBtn.textContent = '正在取消…';
+                        phaseEl.textContent = '正在取消升级…';
+                        hintEl.textContent = '正在等待当前步骤结束，请稍候';
+                    }
                 })
                 .catch(function () {});
         }

@@ -602,9 +602,53 @@
 
   /* ── 评论图片灯箱 ──
      正文里的 .cmt-img 默认是缩略小图（CSS 限宽高），点击后在本层浮窗里显示原图，
-     点空白处或按 Esc 关闭。用事件委托绑定在 document 上，动态插入的评论也生效。 */
+     点空白处 / 关闭按钮 / 按 Esc 关闭；触摸屏支持双指捏合缩放、单指拖动、双击放大还原。
+     用事件委托绑定在 document 上，动态插入的评论也生效。 */
   (function () {
     var box = null, pic = null;
+    var MIN_S = 1, MAX_S = 5, DBL_ZOOM = 2.5;
+    var scale = 1, tx = 0, ty = 0;      // 变换：先平移再缩放，作用于居中显示的图片
+    var pinch = null, drag = null;      // 手势起始状态
+    var lastTap = 0, lastTapX = 0, lastTapY = 0;
+
+    function apply() {
+      pic.style.transform = (tx || ty || scale !== 1)
+        ? 'translate(' + tx + 'px,' + ty + 'px) scale(' + scale + ')'
+        : '';
+    }
+    // 拖动范围限制：不超过放大后图片相对视口的溢出量，避免图片被拖出屏幕找不回
+    function clamp() {
+      var w = pic.offsetWidth, h = pic.offsetHeight;
+      var maxX = Math.max(0, (w * scale - w) / 2);
+      var maxY = Math.max(0, (h * scale - h) / 2);
+      if (tx > maxX) tx = maxX; else if (tx < -maxX) tx = -maxX;
+      if (ty > maxY) ty = maxY; else if (ty < -maxY) ty = -maxY;
+    }
+    function commit() { clamp(); apply(); }
+    function resetView() {
+      scale = 1; tx = 0; ty = 0; pinch = null; drag = null;
+      if (pic) { pic.style.transition = ''; apply(); }
+    }
+    function touchDist(a, b) {
+      var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+      return Math.sqrt(dx * dx + dy * dy) || 1;
+    }
+    function touchMid(a, b) {
+      return { x: (a.clientX + b.clientX) / 2, y: (a.clientY + b.clientY) / 2 };
+    }
+    // 单击/双击：双击在 原始 ↔ 放大 之间切换（以图片中心为基准）
+    function onTap(x, y) {
+      var now = Date.now();
+      if (now - lastTap < 300 && Math.abs(x - lastTapX) < 40 && Math.abs(y - lastTapY) < 40) {
+        lastTap = 0;
+        if (scale > 1) { scale = 1; tx = 0; ty = 0; }
+        else { scale = DBL_ZOOM; tx = 0; ty = 0; }
+        commit();
+      } else {
+        lastTap = now; lastTapX = x; lastTapY = y;
+      }
+    }
+
     function build() {
       if (box) return;
       box = document.createElement('div');
@@ -612,6 +656,56 @@
       pic = document.createElement('img');
       pic.alt = '';
       box.appendChild(pic);
+
+      // 触摸手势：双指捏合缩放（以两指中点为基准）+ 单指拖动（仅放大后）+ 双击缩放
+      pic.addEventListener('touchstart', function (e) {
+        pic.style.transition = 'none';   // 手势期间关掉过渡，跟手更顺
+        if (e.touches.length >= 2) {
+          pinch = {
+            d: touchDist(e.touches[0], e.touches[1]),
+            m: touchMid(e.touches[0], e.touches[1]),
+            s: scale, tx: tx, ty: ty
+          };
+          drag = null;
+        } else if (e.touches.length === 1) {
+          drag = { x: e.touches[0].clientX, y: e.touches[0].clientY, tx: tx, ty: ty, moved: false };
+        }
+      }, { passive: true });
+
+      pic.addEventListener('touchmove', function (e) {
+        if (pinch && e.touches.length >= 2) {
+          e.preventDefault();
+          var d = touchDist(e.touches[0], e.touches[1]);
+          var m = touchMid(e.touches[0], e.touches[1]);
+          scale = Math.max(MIN_S, Math.min(MAX_S, pinch.s * (d / (pinch.d || 1))));
+          // 中点位移叠加到起始平移上，捏合更自然
+          tx = pinch.tx + (m.x - pinch.m.x);
+          ty = pinch.ty + (m.y - pinch.m.y);
+          if (scale <= 1) { tx = 0; ty = 0; }
+          commit();
+        } else if (drag && e.touches.length === 1 && scale > 1) {
+          e.preventDefault();
+          var t = e.touches[0];
+          tx = drag.tx + (t.clientX - drag.x);
+          ty = drag.ty + (t.clientY - drag.y);
+          if (Math.abs(t.clientX - drag.x) > 6 || Math.abs(t.clientY - drag.y) > 6) drag.moved = true;
+          commit();
+        }
+      }, { passive: false });
+
+      function endTouch(e) {
+        pic.style.transition = '';
+        if (e.touches && e.touches.length > 0) return;   // 还有手指按着，等全部抬起
+        if (pinch) { pinch = null; drag = null; return; }
+        if (drag && !drag.moved && e.changedTouches && e.changedTouches.length) {
+          var t = e.changedTouches[0];
+          onTap(t.clientX, t.clientY);
+        }
+        drag = null;
+      }
+      pic.addEventListener('touchend', endTouch);
+      pic.addEventListener('touchcancel', endTouch);
+
       // 右上角关闭按钮（移动端也能点到；点它不应冒泡成「点空白关闭」）
       var btn = document.createElement('button');
       btn.type = 'button';
@@ -630,6 +724,7 @@
     }
     function open(src, alt) {
       build();
+      resetView();
       pic.src = src;
       pic.alt = alt || '';
       document.body.style.overflow = 'hidden';
@@ -639,6 +734,7 @@
       if (!box || !box.classList.contains('is-open')) return;
       box.classList.remove('is-open');
       document.body.style.overflow = '';
+      resetView();
     }
     document.addEventListener('click', function (e) {
       var t = e.target;
