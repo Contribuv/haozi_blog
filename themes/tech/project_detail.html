@@ -6,6 +6,8 @@
 {% block tw_description %}{{ (project.description or blog_subtitle) }}{% endblock %}
 {% block og_url %}{{ request.url }}{% endblock %}
 {% block content %}
+<!-- 阅读进度条（以项目文档正文为锚点；无 README 时自动不启用，逻辑见 theme.js） -->
+<div class="tech-reading-progress" id="readingProgress" data-reading-target=".tech-proj-readme-body" aria-hidden="true"></div>
 {# gh.gh 为 GitHub 实时元数据（拉取失败时为 None，回退到库内数据） #}
 {% set gh_meta = gh.gh or {} %}
 {# owner 从仓库地址解析：github.com/<owner>/<repo> → 面包屑用 #}

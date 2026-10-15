@@ -259,3 +259,31 @@
   // 项目页「反馈」按钮：监听由 base.html 末尾的内联脚本绑定（避开 theme.js IIFE 抛错时的副作用）
 })();
 
+/* ── 阅读进度条：页面存在 #readingProgress 时启用（文章页与项目页共用同一份逻辑） ──
+   锚点由 data-reading-target 指定（默认文章正文 .tech-post-body）；正文顶部与视口顶部
+   对齐时为 0%，正文底部到达视口底部时为 100%。滚动用 rAF 节流，与回到顶部按钮同款。 */
+(function () {
+  'use strict';
+  var bar = document.getElementById('readingProgress');
+  if (!bar) return;
+  var target = document.querySelector(bar.getAttribute('data-reading-target') || '.tech-post-body');
+  if (!target) return;
+  var ticking = false;
+  function update() {
+    ticking = false;
+    var rect = target.getBoundingClientRect();
+    var total = rect.height - window.innerHeight;
+    var scrolled = Math.max(0, -rect.top);
+    var pct = total > 0 ? Math.min(100, Math.max(0, (scrolled / total) * 100)) : 0;
+    bar.style.width = pct + '%';
+  }
+  function onScroll() {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(update);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', update);
+  update();
+})();
+

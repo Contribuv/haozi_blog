@@ -18,7 +18,7 @@
     </script>
     <title>请求被拒绝 - infowe.site</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-    <link rel="stylesheet" href="/themes/tech/theme.css?t=1792069020">
+    <link rel="stylesheet" href="/themes/tech/theme.css?t=1792070027">
     <link rel="alternate" type="application/rss+xml" title="infowe.site RSS" href="/feed.xml">
     <!-- 社交分享：Open Graph + Twitter Card -->
     <meta property="og:site_name" content="infowe.site">
@@ -1358,16 +1358,23 @@ html { touch-action: manipulation; }
 @media (hover: hover) and (pointer: fine) { .markdown-body .code-wrap .code-copy:hover { color: var(--accent); border-color: var(--accent); } }
 @media (hover: none) { .markdown-body .code-wrap .code-copy { opacity: 1; } }
 
-/* 详情页移动端：信息行与 README 卡片间距收紧 */
+/* 详情页移动端：信息行与 README 卡片间距收紧 + 字号收敛（与文章正文同档） */
 @media (max-width: 720px) {
   .tech-proj-readme { padding: 16px; }
-  .tech-proj-crumb { font-size: 18px; }
+  .tech-proj-crumb { font-size: 17px; }
   .tech-proj-readme-head { padding-bottom: 12px; margin-bottom: 14px; }
-  /* README 标题与段落整体收紧，避免手机上一页过散 */
-  .tech-proj-readme-body h1, .tech-proj-readme-body.markdown-body h1 { font-size: 20px; margin: 16px 0 8px; }
-  .tech-proj-readme-body h2, .tech-proj-readme-body.markdown-body h2 { font-size: 18px; margin: 16px 0 8px; }
-  .tech-proj-readme-body h3, .tech-proj-readme-body.markdown-body h3 { font-size: 17px; }
-  .tech-proj-readme-body h4, .tech-proj-readme-body.markdown-body h4 { font-size: 16px; }
+  /* README 正文：与文章正文同档 14px，避免项目文档比文章正文显得更大 */
+  .tech-proj-readme-body, .tech-proj-readme-body.markdown-body { font-size: 14px; line-height: 1.6; }
+  /* README 标题与段落整体收紧，避免手机上一页过散；梯度与文章正文标题一致 */
+  .tech-proj-readme-body h1, .tech-proj-readme-body.markdown-body h1 { font-size: 18px; margin: 16px 0 8px; }
+  .tech-proj-readme-body h2, .tech-proj-readme-body.markdown-body h2 { font-size: 16px; margin: 16px 0 8px; }
+  .tech-proj-readme-body h3, .tech-proj-readme-body.markdown-body h3 { font-size: 15px; }
+  .tech-proj-readme-body h4, .tech-proj-readme-body.markdown-body h4 { font-size: 14px; }
+  .tech-proj-readme-body h5, .tech-proj-readme-body.markdown-body h5 { font-size: 13.5px; }
+  .tech-proj-readme-body h6, .tech-proj-readme-body.markdown-body h6 { font-size: 13px; }
+  /* README 首个标题（通常即项目名，已降级为灰色说明行）随正文同档 */
+  .tech-proj-readme-body.markdown-body > h1:first-child,
+  .tech-proj-readme-body > h1:first-child { font-size: 14px; margin: 0 0 14px; }
   .tech-proj-readme-body.markdown-body p { margin: 0 0 12px; }
 }
 
@@ -1447,22 +1454,28 @@ html { touch-action: manipulation; }
   .tech-nav-actions { margin-left: auto; }
   /* 移动端：写作 icon 隐藏（drawer 菜单已有「写作」文字入口，避免重复） */
   .tech-nav-actions a.tech-icon-btn { display: none; }
+  /* 移动端字号收敛：导航字号同步下调，避免小屏上「品牌名比正文还大」 */
+  .tech-logo { font-size: 17px; }
+  .tech-drawer-link { font-size: 15px; }
   .tech-main { padding: 18px 0 32px; }
   .tech-main:has(.tech-page-head--center) { padding-top: 0; }
   .tech-main:has(.tech-about-hero) { padding-top: 24px; }
   .tech-main:has(.tech-proj) { padding-top: 16px; }
   /* 移动端回到顶部按钮上移，避免遮挡页脚备案文字（scrolled 压缩态同样覆盖） */
   .tech-top, .tech-top.scrolled { bottom: calc(72px + env(safe-area-inset-bottom)); }
-  .tech-post-title-lg { font-size: 24px; }
+  .tech-post-title-lg { font-size: 20px; }
   /* 移动端文章头部收紧：标题下留白与分隔线间距缩小，避免顶部一大片空白 */
   .tech-post-header { margin-bottom: 14px; padding-bottom: 10px; }
-  .tech-page-title { font-size: 24px; }
+  .tech-page-title { font-size: 20px; }
+  .tech-page-desc { font-size: 14px; }
   .tech-page-head--center { padding: 32px 4px 32px; margin-bottom: 24px; }
   /* 关于页：移动端作者卡收紧内边距 */
   .tech-about-hero { padding: 24px 16px 20px; margin-bottom: 20px; }
-  .tech-page-head--center .tech-page-title { font-size: 32px; }
-  .tech-page-head--center .tech-page-desc { font-size: 15px; }
-  .tech-about-hero .tech-page-title { font-size: 22px; }
+  .tech-page-head--center .tech-page-title { font-size: 26px; }
+  .tech-page-head--center .tech-page-desc { font-size: 14px; }
+  .tech-about-hero .tech-page-title { font-size: 20px; }
+  /* 首页终端格言：与正文同档，避免小屏上装饰文案比正文还大 */
+  .tech-quote { font-size: 14px; }
   /* 关于页统计行：小屏收紧字号与内距，保证单行不溢出 */
   .tech-stat { padding: 0 12px; gap: 6px; }
   .tech-stat b { font-size: 18px; }
@@ -1482,22 +1495,23 @@ html { touch-action: manipulation; }
 }
 
 /* ≤767px：文章页公众号式排版（手机与平板统一，桌面窄窗预览同样生效）：
-   16px / 1.6 行高 / 24px 段距 / 两端对齐；含 <br> 的段落自动排除，避免短行被拉伸 */
+   14px / 1.6 行高 / 13px 段距 / 两端对齐；含 <br> 的段落自动排除，避免短行被拉伸 */
 @media (max-width: 767px) {
-  .tech-post-title { font-size: 18px; }
+  .tech-post-title { font-size: 16px; }
+  .tech-post-excerpt { font-size: 14px; }
   .tech-post-body, .tech-post-body.markdown-body {
-    /* 中文正文不加字间距：0.03em 在 16px 下约 0.5px/字，移动端视觉明显发「散」（用户反馈） */
-    font-size: 16px; line-height: 1.6; letter-spacing: normal;
+    /* 中文正文不加字间距：0.03em 在 14px 下约 0.4px/字，移动端视觉明显发「散」（用户反馈） */
+    font-size: 14px; line-height: 1.6; letter-spacing: normal;
   }
-  /* 移动标题梯度：20/18/17/16/15.5/15，与页面标题 24px 拉开，避免双标题打架 */
-  .tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 20px; padding-bottom: 0; border-bottom: 0; }
+  /* 移动标题梯度：18/16/15/14/13.5/13，与页面标题 20px 拉开，避免双标题打架 */
+  .tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 18px; padding-bottom: 0; border-bottom: 0; }
   .tech-post-body h2, .tech-post-body.markdown-body h2 {
-    font-size: 18px; padding-bottom: 7px;
+    font-size: 16px; padding-bottom: 7px;
   }
-  .tech-post-body h3, .tech-post-body.markdown-body h3 { font-size: 17px; }
-  .tech-post-body h4, .tech-post-body.markdown-body h4 { font-size: 16px; }
-  .tech-post-body h5, .tech-post-body.markdown-body h5 { font-size: 15.5px; }
-  .tech-post-body h6, .tech-post-body.markdown-body h6 { font-size: 15px; }
+  .tech-post-body h3, .tech-post-body.markdown-body h3 { font-size: 15px; }
+  .tech-post-body h4, .tech-post-body.markdown-body h4 { font-size: 14px; }
+  .tech-post-body h5, .tech-post-body.markdown-body h5 { font-size: 13.5px; }
+  .tech-post-body h6, .tech-post-body.markdown-body h6 { font-size: 13px; }
   /* 段距再收紧到 13px：门户式密度，一屏能多看好几行 */
   .tech-post-body p, .tech-post-body.markdown-body p { margin: 0 0 13px; }
   /* 标题上下留白同步收紧 */
@@ -1821,7 +1835,7 @@ X-CSRF: <span class="hl-error">rejected</span></pre>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
     </button>
 
-    <script src="/themes/tech/theme.js?t=1792069020" defer></script>
+    <script src="/themes/tech/theme.js?t=1792070027" defer></script>
     <script src="/static/js/disable-zoom.js?t=v2.7.3"></script>
     <script>
     // 项目页「反馈」按钮：点击平滑滚动到评论区并聚焦输入框

@@ -9,8 +9,8 @@
 {% block og_image %}{% if og_image_path.startswith('/') %}{{ request.url_root.rstrip('/') }}{{ og_image_path }}{% else %}{{ og_image_path }}{% endif %}{% endblock %}
 {% block tw_image %}{% if og_image_path.startswith('/') %}{{ request.url_root.rstrip('/') }}{{ og_image_path }}{% else %}{{ og_image_path }}{% endif %}{% endblock %}
 {% block content %}
-<!-- 阅读进度条 -->
-<div class="tech-reading-progress" id="readingProgress" aria-hidden="true"></div>
+<!-- 阅读进度条（锚点与滚动逻辑见 theme.js 的 readingProgress 块） -->
+<div class="tech-reading-progress" id="readingProgress" data-reading-target=".tech-post-body" aria-hidden="true"></div>
 
 <div class="tech-post-wrap">
 <div class="tech-post-layout">
@@ -401,24 +401,6 @@
             if (Math.abs(dx) > 50) lbShow(dx < 0 ? cur + 1 : cur - 1);
         }, { passive: true });
     });
-})();
-
-/* 阅读进度条：随滚动填充顶部细条，给读者空间锚点 */
-(function () {
-    var bar = document.getElementById('readingProgress');
-    if (!bar) return;
-    var article = document.querySelector('.tech-post-body');
-    if (!article) return;
-    function update() {
-        var rect = article.getBoundingClientRect();
-        var total = rect.height - window.innerHeight;
-        var scrolled = Math.max(0, -rect.top);
-        var pct = total > 0 ? Math.min(100, (scrolled / total) * 100) : 0;
-        bar.style.width = pct + '%';
-    }
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    update();
 })();
 
 /* 复制链接按钮：一键复制当前页 URL，toast 反馈 */
