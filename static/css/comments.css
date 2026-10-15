@@ -60,9 +60,9 @@
 /* 头像外链包裹层：不影响 .cmt-avatar 的尺寸计算 */
 /* align-self 防止被 .cmt-item 的 stretch 拉伸成整条评论高度（否则 50% 圆角变椭圆、hover 光环畸形） */
 .cmt-avatar-link{flex:none;align-self:flex-start;display:block;border-radius:50%;line-height:0;transition:box-shadow .18s ease,transform .18s ease}
-.cmt-avatar-link:hover{box-shadow:0 0 0 2px var(--c-accent);transform:scale(1.06)}
+@media (hover:hover) and (pointer:fine){ .cmt-avatar-link:hover{box-shadow:0 0 0 2px var(--c-accent);transform:scale(1.06)} }
 /* 悬停头像时昵称同步高亮：:has 不支持的老浏览器自动降级为不联动 */
-.cmt-item:has(.cmt-avatar-link:hover) a.cmt-author{color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-item:has(.cmt-avatar-link:hover) a.cmt-author{color:var(--c-accent)} }
 @media (prefers-reduced-motion:reduce){
   .cmt-avatar-link{transition:none}
   .cmt-avatar-link:hover{transform:none}
@@ -78,7 +78,7 @@
 .cmt-head{display:flex;align-items:baseline;column-gap:6px;row-gap:2px;flex-wrap:wrap;line-height:1.4}
 .cmt-author{font-size:13.5px;font-weight:600;color:var(--c-text)}
 a.cmt-author{color:var(--c-text);text-decoration:none}
-a.cmt-author:hover{color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ a.cmt-author:hover{color:var(--c-accent)} }
 /* 元信息（时间/属地）跟在昵称与徽章之后同排：与身份组多留 6px，弱化成 11px 小字 */
 .cmt-time{margin-left:6px;font-size:11px;color:var(--c-text3);font-variant-numeric:tabular-nums}
 .cmt-loc{font-size:11px;color:var(--c-text3);font-style:normal}
@@ -91,10 +91,10 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-text{margin-top:9px;font-size:14px;line-height:1.75;color:var(--c-text2);word-break:break-word;white-space:pre-wrap;overflow-wrap:anywhere}
 .cmt-item[data-lv="reply"] .cmt-text{font-size:13.5px;margin-top:7px}
 .cmt-at{color:var(--c-accent);text-decoration:none;font-weight:500;margin-right:2px}
-.cmt-at:hover{text-decoration:underline}
+@media (hover:hover) and (pointer:fine){ .cmt-at:hover{text-decoration:underline} }
 .cmt-actions{margin-top:7px;display:flex;gap:14px}
 .cmt-reply{font-size:12.5px;color:var(--c-text3);background:none;border:none;padding:0;cursor:pointer;transition:color .15s}
-.cmt-reply:hover{color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-reply:hover{color:var(--c-accent)} }
 
 /* ── 回复区：无底色，仅靠缩进与头像尺度分层（组内一律平铺） ── */
 .cmt-replies{margin:14px 0 0 var(--indent);padding:0}
@@ -105,7 +105,7 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-fold{margin-top:14px;font-size:12.5px;font-weight:500;color:var(--c-accent);background:none;border:none;padding:0;cursor:pointer;display:inline-flex;align-items:center;gap:5px}
 .cmt-fold svg{width:11px;height:11px;stroke:currentColor;fill:none;stroke-width:2.4;transition:transform .18s}
 .cmt-fold[aria-expanded="true"] svg{transform:rotate(180deg)}
-.cmt-fold:hover{text-decoration:underline}
+@media (hover:hover) and (pointer:fine){ .cmt-fold:hover{text-decoration:underline} }
 
 /* ── 表单：独立一张卡（与评论列表并列），卡内 details 不再重复描边与内距 ── */
 .cmt-form{margin-top:22px;background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--c-radius);padding:14px 16px}
@@ -114,7 +114,7 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-form .cmt-box{background:none;border:none;border-radius:0;overflow:visible}
 .cmt-toggle{list-style:none;display:flex;align-items:center;gap:8px;padding:12px 16px;font-size:13.5px;color:var(--c-text2);cursor:pointer;user-select:none;transition:color .15s,background .15s}
 .cmt-toggle::-webkit-details-marker{display:none}
-.cmt-toggle:hover{color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-toggle:hover{color:var(--c-accent)} }
 .cmt-box:not([open]) .cmt-box-body{display:none}
 .cmt-box[open] .cmt-box-body{display:block}
 .cmt-box-body{padding:14px 16px}
@@ -133,11 +133,11 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-form .count{margin-left:auto;font-size:11.5px;color:var(--c-text3);font-variant-numeric:tabular-nums}
 .cmt-form .count.is-over{color:#cf222e}
 .cmt-form .submit{padding:8px 20px;border-radius:8px;background:var(--c-accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s,filter .15s}
-.cmt-form .submit:hover{filter:brightness(1.08)}
+@media (hover:hover) and (pointer:fine){ .cmt-form .submit:hover{filter:brightness(1.08)} }
 .cmt-form .submit[disabled]{opacity:.6;cursor:not-allowed}
 .cmt-hint{display:flex;align-items:center;gap:8px;margin-bottom:9px;font-size:12.5px;color:var(--c-accent)}
 .cmt-hint button{font-size:11.5px;color:var(--c-text3);background:none;border:none;padding:0;cursor:pointer}
-.cmt-hint button:hover{color:var(--c-text2)}
+@media (hover:hover) and (pointer:fine){ .cmt-hint button:hover{color:var(--c-text2)} }
 .cmt-remember{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;margin-bottom:10px;border-radius:8px;background:var(--c-reply);font-size:12.5px;color:var(--c-text3)}
 .cmt-remember button{flex:none;font-size:11.5px;color:var(--c-accent);background:none;border:none;padding:0;cursor:pointer;white-space:nowrap}
 /* 博主身份条：登录后替代昵称/邮箱/网址输入行（与 .cmt-remember 同为卡内 tint 块，不加描边） */
@@ -165,18 +165,18 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-form .cmt-field input{padding-right:38px}
 .cmt-qq-av{position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;object-fit:cover;pointer-events:none;background:var(--c-reply)}
 .cmt-suggest{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:20;padding:8px 12px;font-size:12.5px;color:var(--c-text2);background:var(--c-sub);border:1px solid var(--c-border);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);cursor:pointer;text-align:left}
-.cmt-suggest:hover{color:var(--c-accent);border-color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-suggest:hover{color:var(--c-accent);border-color:var(--c-accent)} }
 
 /* ── 表情选择：精选 Unicode emoji（面板由 comments.js 生成） ── */
 .cmt-emoji{position:relative;flex:none}
 .cmt-emoji-btn{width:30px;height:30px;font-size:17px;line-height:1;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid var(--c-border);border-radius:8px;cursor:pointer;padding:0;transition:border-color .15s}
-.cmt-emoji-btn:hover{background:var(--c-reply);border-color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-emoji-btn:hover{background:var(--c-reply);border-color:var(--c-accent)} }
 .cmt-emoji-panel{position:absolute;bottom:calc(100% + 8px);left:0;z-index:30;width:min(300px,calc(100vw - 56px));max-height:220px;overflow-y:auto;padding:10px 12px;background:var(--c-sub);border:1px solid var(--c-border);border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.16)}
 .cmt-emoji-group+.cmt-emoji-group{margin-top:8px}
 .cmt-emoji-title{font-size:11px;color:var(--c-text3);margin-bottom:4px}
 .cmt-emoji-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(30px,1fr));gap:2px}
 .cmt-emoji-item{font-size:17px;line-height:1;padding:4px 0;background:none;border:none;border-radius:6px;cursor:pointer}
-.cmt-emoji-item:hover{background:var(--c-reply)}
+@media (hover:hover) and (pointer:fine){ .cmt-emoji-item:hover{background:var(--c-reply)} }
 
 /* ── 评论正文内图片（评论图片上传）：默认显示缩略小图，点击后用灯箱看大图 ── */
 .cmt-text .cmt-img{display:inline-block;max-width:160px;max-height:160px;width:auto;height:auto;margin:8px 8px 0 0;border-radius:8px;border:1px solid var(--c-border);background:var(--c-reply);cursor:zoom-in;vertical-align:top}
@@ -186,7 +186,7 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-lightbox img{max-width:100%;max-height:100%;border-radius:8px;box-shadow:0 10px 40px rgba(0,0,0,.5);background:#111;cursor:default}
 /* 右上角关闭按钮：移动端也能轻松点到 */
 .cmt-lightbox-close{position:absolute;top:16px;right:16px;width:40px;height:40px;display:flex;align-items:center;justify-content:center;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:24px;line-height:1;cursor:pointer;padding:0;transition:background .15s}
-.cmt-lightbox-close:hover{background:rgba(255,255,255,.28)}
+@media (hover:hover) and (pointer:fine){ .cmt-lightbox-close:hover{background:rgba(255,255,255,.28)} }
 /* 移动端：缩小留白、放大关闭按钮热区 */
 @media (max-width:640px){
   .cmt-lightbox{padding:12px}
@@ -202,7 +202,7 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-imgup{position:relative;flex:none}
 .cmt-imgup-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid var(--c-border);border-radius:8px;cursor:pointer;padding:0;color:var(--c-text2);transition:border-color .15s,color .15s}
 .cmt-imgup-btn svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.cmt-imgup-btn:hover{background:var(--c-reply);border-color:var(--c-accent);color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-imgup-btn:hover{background:var(--c-reply);border-color:var(--c-accent);color:var(--c-accent)} }
 .cmt-imgup-btn[disabled]{opacity:.55;cursor:default}
 .cmt-imgup-btn.is-loading svg{animation:cmt-spin 1s linear infinite}
 @keyframes cmt-spin{to{transform:rotate(360deg)}}
@@ -213,9 +213,9 @@ a.cmt-author:hover{color:var(--c-accent)}
 .cmt-imgup-item{position:relative;width:64px;height:64px;border-radius:8px;overflow:hidden;border:1px solid var(--c-border);background:var(--c-reply)}
 .cmt-imgup-item img{width:100%;height:100%;object-fit:cover;display:block}
 .cmt-imgup-remove{position:absolute;top:2px;right:2px;width:18px;height:18px;line-height:16px;text-align:center;border:0;border-radius:50%;background:rgba(0,0,0,.55);color:#fff;font-size:14px;cursor:pointer;padding:0}
-.cmt-imgup-remove:hover{background:rgba(0,0,0,.8)}
+@media (hover:hover) and (pointer:fine){ .cmt-imgup-remove:hover{background:rgba(0,0,0,.8)} }
 
 /* ── 网址协议补全下拉（多选项，复用 .cmt-suggest 容器） ── */
 .cmt-suggest-item{padding:4px 0;cursor:pointer}
 .cmt-suggest-item+.cmt-suggest-item{border-top:1px solid var(--c-border)}
-.cmt-suggest-item:hover{color:var(--c-accent)}
+@media (hover:hover) and (pointer:fine){ .cmt-suggest-item:hover{color:var(--c-accent)} }

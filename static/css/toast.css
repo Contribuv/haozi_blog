@@ -18,7 +18,7 @@
 .toast-icon svg{width:11px;height:11px;stroke-width:2.6;fill:none;stroke:currentColor}
 .toast-msg{flex:1;min-width:0;word-break:break-word;color:var(--text-secondary, var(--text-secondary, #9ba0b5))}
 .toast-close{flex:none;margin-top:1px;width:16px;height:16px;display:flex;align-items:center;justify-content:center;border-radius:4px;cursor:pointer;opacity:.5;transition:opacity .15s}
-.toast-close:hover{opacity:1}
+@media (hover:hover) and (pointer:fine){.toast-close:hover{opacity:1}}
 .toast-close svg{width:10px;height:10px;stroke:currentColor;stroke-width:2.4;fill:none}
 
 /* 语义色：只染图标与描边，保持整体克制 */

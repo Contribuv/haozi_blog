@@ -78,7 +78,7 @@
 
 /* ── 链接 ── */
 .markdown-body a { color: var(--mb-link); text-decoration: none; }
-.markdown-body a:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) { .markdown-body a:hover { text-decoration: underline; } }
 
 /* ── 列表 ── */
 .markdown-body ul, .markdown-body ol {

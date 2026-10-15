@@ -46,7 +46,7 @@
   background: none; cursor: pointer;
   color: var(--text-secondary, #656d76);
 }
-.share-close:hover { color: var(--text, #1f2328); background: var(--bg-hover, var(--bg-subtle, rgba(0, 0, 0, 0.06))); }
+@media (hover: hover) and (pointer: fine) { .share-close:hover { color: var(--text, #1f2328); background: var(--bg-hover, var(--bg-subtle, rgba(0, 0, 0, 0.06))); } }
 
 /* ── 渠道网格 ── */
 .share-channels {
@@ -63,7 +63,7 @@
   border-radius: 10px;
   transition: transform 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
-.share-item:hover { color: var(--text, #1f2328); background: var(--bg-hover, var(--bg-subtle, rgba(0, 0, 0, 0.06))); transform: translateY(-1px); }
+@media (hover: hover) and (pointer: fine) { .share-item:hover { color: var(--text, #1f2328); background: var(--bg-hover, var(--bg-subtle, rgba(0, 0, 0, 0.06))); transform: translateY(-1px); } }
 .share-chip {
   width: 46px; height: 46px;
   display: inline-flex; align-items: center; justify-content: center;
@@ -98,7 +98,7 @@
   border: none; background: none; cursor: pointer;
   color: var(--accent, #0969da);
 }
-.share-back:hover { text-decoration: underline; }
+@media (hover: hover) and (pointer: fine) { .share-back:hover { text-decoration: underline; } }
 
 .share-qr-box {
   display: flex; justify-content: center;
