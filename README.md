@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.6.17-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.5-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
