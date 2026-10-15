@@ -859,7 +859,13 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 }
 @media (hover: hover) and (pointer: fine) { .tech-btn:hover { border-color: var(--accent); color: var(--accent); } }
 .tech-btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-@media (hover: hover) and (pointer: fine) { .tech-btn-primary:hover { filter: brightness(1.1); color: #fff; } }
+/* 深色主题：accent 是亮天蓝（#58a6ff），配白字对比仅约 2.4:1 会发糊，改深色字（约 8.9:1） */
+[data-theme="dark"] .tech-btn-primary { color: #0d1117; }
+/* primary hover：浅色加深 / 深色提亮——两端都朝「对比度变好」的方向反馈，不再无脑提亮 */
+@media (hover: hover) and (pointer: fine) {
+  .tech-btn-primary:hover { filter: brightness(.92); }
+  [data-theme="dark"] .tech-btn-primary:hover { filter: brightness(1.12); }
+}
 /* 许可文字与按钮组同排，靠右对齐；窄屏折行时恢复左对齐 */
 .tech-license { font-size: 13px; color: var(--text-secondary); margin: 0 0 0 auto; }
 
