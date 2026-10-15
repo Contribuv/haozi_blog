@@ -193,6 +193,11 @@ a.cmt-author:hover{color:var(--c-accent)}
   .cmt-lightbox-close{top:10px;right:10px;width:44px;height:44px;font-size:26px}
 }
 
+/* ── 锚点定位（#comment-N）：给 sticky 导航留出滚动余量，命中后短暂高亮 ── */
+.cmt-item{scroll-margin-top:80px}
+@keyframes cmt-anchor-flash{0%,60%{background:var(--c-reply)}100%{background:transparent}}
+.cmt-anchor-flash{animation:cmt-anchor-flash 1.6s ease;border-radius:8px}
+
 /* ── 图片上传按钮（与表情按钮同尺寸，放在表情右侧） ── */
 .cmt-imgup{position:relative;flex:none}
 .cmt-imgup-btn{width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;background:none;border:1px solid var(--c-border);border-radius:8px;cursor:pointer;padding:0;color:var(--c-text2);transition:border-color .15s,color .15s}

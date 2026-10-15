@@ -191,6 +191,34 @@
   }
   setupAllFolds();
 
+  /* ── 2.5 锚点定位：#comment-N 指向被折叠的回复时，先展开所在折叠区再滚动过去 ──
+     折叠是用 hidden 实现的，隐藏元素没有布局盒子，浏览器直接跳转只能停在错误位置
+     （后台评论管理点击 /projects/1#comment-68 定位不到就是此因）。这里保留折叠，
+     仅在带锚点访问时自动展开命中的那一组，并短暂高亮目标。 */
+  function revealHashTarget() {
+    var hash = location.hash || '';
+    if (hash.indexOf('#comment-') !== 0) return;
+    var el = document.getElementById(hash.slice(1));
+    if (!el) return;
+    // 逐层向上展开包含它的折叠区（当前结构只有一层，写法兼容未来嵌套）
+    var box = el.closest ? el.closest('.cmt-replies') : null;
+    while (box) {
+      var foldBtn = box.querySelector('.cmt-fold');
+      if (foldBtn && foldBtn.getAttribute('aria-expanded') !== 'true') foldBtn.click();
+      box = box.parentElement && box.parentElement.closest
+        ? box.parentElement.closest('.cmt-replies') : null;
+    }
+    var scroll = function () {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('cmt-anchor-flash');
+      setTimeout(function () { el.classList.remove('cmt-anchor-flash'); }, 1600);
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(scroll);
+    else setTimeout(scroll, 30);
+  }
+  revealHashTarget();
+  window.addEventListener('hashchange', revealHashTarget);
+
   /* ── 3. 字数统计 ── */
   if (textarea && counter) {
     var sync = function () {

@@ -242,7 +242,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-drawer-link.active { color: var(--accent); font-weight: 600; }
 
 /* ── 主内容 ── */
-.tech-main { flex: 1; padding: 32px 0 64px; }
+.tech-main { flex: 1; padding: 24px 0 40px; }
 /* 居中极简 Hero 页面（首页/搜索/标签结果）：main 自身不垫顶部，留白交给 page-head 统一，保证上下对称 */
 .tech-main:has(.tech-page-head--center) { padding-top: 0; }
 /* 关于页：顶部是左对齐「关于」页头 + 下方人物卡 Hero，需与其他子页一致的顶部留白 */
@@ -552,7 +552,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 
 /* TOC：窄屏内联折叠框，位于标题下方、正文之前；上下 24px（与相邻块 margin 折叠取较大值）；
    ≥1400px 改为 fixed 悬浮在容器右侧，margin 归零且脱离文档流 */
-.tech-toc-sidebar { margin: 24px 0; }
+.tech-toc-sidebar { margin: 16px 0; }
 @media (min-width: 1400px) {
   .tech-toc-sidebar {
     position: fixed;
@@ -566,11 +566,11 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   .tech-toc-summary::after { display: none; }
 }
 
-.tech-post-header { margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
-.tech-post-title-lg { font-size: 28px; font-weight: 700; line-height: 1.4; margin: 0 0 14px; }
+.tech-post-header { margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.tech-post-title-lg { font-size: 26px; font-weight: 700; line-height: 1.35; margin: 0 0 10px; }
 .tech-post-meta-lg {
-  display: flex; flex-wrap: wrap; gap: 6px 16px;
-  font-size: 13px; color: var(--text-secondary); margin-bottom: 10px;
+  display: flex; flex-wrap: wrap; gap: 4px 14px;
+  font-size: 13px; color: var(--text-secondary); margin-bottom: 8px;
 }
 .tech-post-tags-lg { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -627,26 +627,31 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 /* 正文：16px / 1.75 行高；中文不加字间距（等宽字符加间距反显松散，用户反馈） */
 .tech-post-body,
 .tech-post-body.markdown-body {
-  font-size: 16px; line-height: 1.75; word-wrap: break-word;
+  font-size: 16px; line-height: 1.65; word-wrap: break-word;
 }
 .tech-post-body h1, .tech-post-body h2, .tech-post-body h3,
 .tech-post-body h4, .tech-post-body h5, .tech-post-body h6,
 .tech-post-body.markdown-body h1, .tech-post-body.markdown-body h2,
 .tech-post-body.markdown-body h3, .tech-post-body.markdown-body h4,
 .tech-post-body.markdown-body h5, .tech-post-body.markdown-body h6 {
-  font-weight: 700; line-height: 1.4; margin: 28px 0 14px;
+  font-weight: 700; line-height: 1.35; margin: 20px 0 9px;
 }
-/* 桌面标题梯度：24/22/19/17/16.5/16，均高于正文 16px；h1 无边框区别于 h2 */
-.tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 24px; }
+/* 桌面标题梯度：22/20/18/16.5/16/15.5，明显低于页面标题 26px
+   —— 页面标题本身就是文章 h1，正文里若再出现一个 24px 的 # 大标题，
+   两个大标题紧挨着会「打架」（用户反馈双标题丑），故整体下调一级；
+   h1 显式清掉 markdown-body 默认的下边框，只留 h2 带分隔线，层级更清爽 */
+.tech-post-body h1, .tech-post-body.markdown-body h1 {
+  font-size: 22px; padding-bottom: 0; border-bottom: 0;
+}
 .tech-post-body h2, .tech-post-body.markdown-body h2 {
-  font-size: 22px; padding-bottom: 8px;
+  font-size: 20px; padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
 }
-.tech-post-body h3, .tech-post-body.markdown-body h3 { font-size: 19px; }
-.tech-post-body h4, .tech-post-body.markdown-body h4 { font-size: 17px; }
-.tech-post-body h5, .tech-post-body.markdown-body h5 { font-size: 16.5px; }
-.tech-post-body h6, .tech-post-body.markdown-body h6 { font-size: 16px; }
-.tech-post-body p, .tech-post-body.markdown-body p { margin: 0 0 20px; }
+.tech-post-body h3, .tech-post-body.markdown-body h3 { font-size: 18px; }
+.tech-post-body h4, .tech-post-body.markdown-body h4 { font-size: 16.5px; }
+.tech-post-body h5, .tech-post-body.markdown-body h5 { font-size: 16px; }
+.tech-post-body h6, .tech-post-body.markdown-body h6 { font-size: 15.5px; }
+.tech-post-body p, .tech-post-body.markdown-body p { margin: 0 0 13px; }
 .tech-post-body strong, .tech-post-body.markdown-body strong { font-weight: 600; }
 .tech-post-body em { font-style: italic; }
 .tech-post-body s, .tech-post-body del { color: var(--text-secondary); }
@@ -654,7 +659,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-post-body abbr { border-bottom: 1px dotted var(--border-strong); cursor: help; }
 /* details 折叠块（GitHub README 常用）：文章页与项目详情页 README 同款
    summary 加三角箭头占位 + 嵌套内容内边距，修复项目页 tab 展开无样式/内容贴边 */
-.tech-post-body details, .tech-proj-readme-body details { margin: 0 0 16px; }
+.tech-post-body details, .tech-proj-readme-body details { margin: 0 0 10px; }
 .tech-post-body summary, .tech-proj-readme-body summary { cursor: pointer; font-weight: 600; }
 .tech-post-body summary::marker, .tech-proj-readme-body summary::marker { color: var(--text-secondary); }
 .tech-post-body details[open] > summary, .tech-proj-readme-body details[open] > summary { margin-bottom: 8px; }
@@ -669,9 +674,9 @@ html[data-theme-mode="auto"] #theme-toggle::after {
   border-bottom-color: var(--accent);
   background: color-mix(in srgb, var(--accent) 8%, transparent);
 }
-.tech-post-body img { max-width: 100%; border-radius: 6px; display: block; margin: 12px auto; cursor: zoom-in; }
+.tech-post-body img { max-width: 100%; border-radius: 6px; display: block; margin: 8px auto; cursor: zoom-in; }
 .tech-post-body blockquote {
-  margin: 0 0 16px; padding: 10px 16px;
+  margin: 0 0 10px; padding: 8px 14px;
   border-left: 3px solid var(--accent);
   border-radius: 0 6px 6px 0;
   background: var(--quote-bg);
@@ -679,7 +684,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 }
 .tech-post-body blockquote > :first-child { margin-top: 0; }
 .tech-post-body blockquote > :last-child { margin-bottom: 0; }
-.tech-post-body blockquote p { margin: 8px 0; }
+.tech-post-body blockquote p { margin: 6px 0; }
 .tech-post-body code {
   font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 13.5px; background: var(--bg-subtle);
@@ -688,12 +693,12 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .tech-post-body pre {
   background: var(--code-bg); border: 1px solid var(--border);
   border-radius: 8px; padding: 16px; overflow-x: auto;
-  margin: 0 0 16px; line-height: 1.5; text-align: left;
+  margin: 0 0 10px; line-height: 1.5; text-align: left;
 }
 .tech-post-body pre code { background: none; padding: 0; font-size: 13.5px; }
 
 /* 代码块复制按钮（JS 包 .code-wrap 容器） */
-.code-wrap { position: relative; margin: 0 0 16px; }
+.code-wrap { position: relative; margin: 0 0 10px; }
 .code-wrap pre { margin: 0; }
 .code-copy {
   position: absolute; top: 8px; right: 8px; z-index: 1;
@@ -706,17 +711,17 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 .code-copy:hover { color: var(--accent); border-color: var(--accent); }
 @media (hover: none) { .code-copy { opacity: 1; } }
 .tech-post-body table {
-  width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: inherit;
+  width: 100%; border-collapse: collapse; margin: 0 0 10px; font-size: inherit;
   display: block; overflow-x: auto;
 }
 .tech-post-body th, .tech-post-body td {
-  border: 1px solid var(--border); padding: 8px 12px; text-align: left;
+  border: 1px solid var(--border); padding: 6px 10px; text-align: left;
 }
 .tech-post-body th { background: var(--bg-subtle); font-weight: 600; }
-.tech-post-body ul, .tech-post-body ol { padding-left: 24px; margin: 0 0 16px; }
-.tech-post-body li { margin-bottom: 4px; }
+.tech-post-body ul, .tech-post-body ol { padding-left: 22px; margin: 0 0 10px; }
+.tech-post-body li { margin-bottom: 2px; }
 .tech-post-body li > ul, .tech-post-body li > ol { margin-bottom: 0; }
-.tech-post-body hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+.tech-post-body hr { border: none; border-top: 1px solid var(--border); margin: 18px 0; }
 .tech-post-body .task-list-item { list-style: none; margin-left: -20px; }
 .tech-post-body input[type="checkbox"] { margin-right: 6px; }
 
@@ -728,7 +733,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 
 /* 提示块（admonition 扩展） */
 .tech-post-body .admonition {
-  padding: 12px 16px; border-radius: 8px; margin: 0 0 16px;
+  padding: 10px 14px; border-radius: 8px; margin: 0 0 10px;
   border-left: 4px solid var(--border-strong);
   background: var(--bg-subtle);
 }
@@ -757,8 +762,8 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 }
 
 /* 定义列表（def_list 扩展） */
-.tech-post-body dl { margin: 0 0 16px; }
-.tech-post-body dt { font-weight: 600; margin-top: 8px; }
+.tech-post-body dl { margin: 0 0 10px; }
+.tech-post-body dt { font-weight: 600; margin-top: 6px; }
 .tech-post-body dd { margin: 0 0 4px 24px; color: var(--text-secondary); }
 
 /* 脚注（footnotes 扩展） */
@@ -796,7 +801,7 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 
 /* ── 上一篇 / 下一篇 ── */
 .tech-post-pager {
-  margin: 40px 0 0;
+  margin: 26px 0 0;
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }
 .tech-pager-link {
@@ -825,11 +830,11 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 
 /* ── 文章底部操作 ── */
 .tech-post-footer {
-  margin: 32px 0 0;
-  padding-top: 20px; border-top: 1px solid var(--border);
+  margin: 22px 0 0;
+  padding-top: 14px; border-top: 1px solid var(--border);
 }
 .tech-post-tags-bottom {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px;
 }
 .tech-post-actions {
   display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
@@ -871,8 +876,8 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 }
 
 /* ── 相关文章 ── */
-.tech-related { margin: 40px 0 0; }
-.tech-related-title { font-size: 18px; font-weight: 600; margin: 0 0 16px; }
+.tech-related { margin: 26px 0 0; }
+.tech-related-title { font-size: 18px; font-weight: 600; margin: 0 0 12px; }
 /* 精选推荐区：底部对齐页头 --center 的分隔线（细 border + 居中渐变彩条） */
 .tech-featured {
   position: relative;
@@ -1248,6 +1253,34 @@ html { touch-action: manipulation; }
 .tech-proj-feedback:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .tech-proj-feedback-icon { display: inline-block; vertical-align: middle; }
 .tech-proj-readme-body { min-width: 0; }
+/* README 正文标题：对齐文章页同一套梯度。此前该项目未覆盖，README 里的 # 会回落到
+   markdown-body 默认 font-size:2em(≈32px)+下边框，比上方页面标题还大且多一条横线，
+   「项目名 + README 大标题」双标题非常突兀（用户反馈）。 */
+.tech-proj-readme-body h1, .tech-proj-readme-body.markdown-body h1 {
+  font-size: 22px; font-weight: 700; line-height: 1.35; margin: 20px 0 9px;
+  padding-bottom: 0; border-bottom: 0;
+}
+.tech-proj-readme-body h2, .tech-proj-readme-body.markdown-body h2 {
+  font-size: 20px; font-weight: 700; line-height: 1.35; margin: 20px 0 9px;
+  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+}
+.tech-proj-readme-body h3, .tech-proj-readme-body.markdown-body h3 { font-size: 18px; font-weight: 700; line-height: 1.35; margin: 18px 0 8px; }
+.tech-proj-readme-body h4, .tech-proj-readme-body.markdown-body h4 { font-size: 16.5px; font-weight: 700; line-height: 1.35; margin: 16px 0 8px; }
+.tech-proj-readme-body h5, .tech-proj-readme-body.markdown-body h5 { font-size: 16px; font-weight: 700; line-height: 1.35; margin: 14px 0 8px; }
+.tech-proj-readme-body h6, .tech-proj-readme-body.markdown-body h6 { font-size: 15.5px; font-weight: 700; line-height: 1.35; margin: 14px 0 8px; }
+/* README 段落与其他块同样按门户密度收紧 */
+.tech-proj-readme-body.markdown-body p { margin: 0 0 13px; }
+.tech-proj-readme-body.markdown-body ul,
+.tech-proj-readme-body.markdown-body ol { margin: 0 0 10px; padding-left: 22px; }
+.tech-proj-readme-body.markdown-body li { margin-top: 0; margin-bottom: 2px; }
+/* README 首个标题通常就是「# 项目名」，与页面顶部 crumb 重复（「Contribuv/文件收集器」下面又出现
+   一个「文件收集器 (File Collector)」大标题）。这里把它降级成一行灰色小字，消除双标题感；
+   元素保留不隐藏，目录里指向它的锚点仍可命中（用 display:none 会让 TOC 跳到空处）。 */
+.tech-proj-readme-body.markdown-body > h1:first-child,
+.tech-proj-readme-body > h1:first-child {
+  font-size: 15px; font-weight: 600; color: var(--text-secondary);
+  margin: 0 0 16px; padding: 0; border: 0;
+}
 /* 点目录跳转时留出 sticky nav（56px）呼吸空间，与文章页正文一致 */
 .tech-proj-readme-body :is(h1, h2, h3, h4, h5, h6) { scroll-margin-top: 72px; }
 .tech-proj-readme-empty {
@@ -1272,8 +1305,15 @@ html { touch-action: manipulation; }
 
 /* 详情页移动端：信息行与 README 卡片间距收紧 */
 @media (max-width: 720px) {
-  .tech-proj-readme { padding: 20px; }
+  .tech-proj-readme { padding: 16px; }
   .tech-proj-crumb { font-size: 18px; }
+  .tech-proj-readme-head { padding-bottom: 12px; margin-bottom: 14px; }
+  /* README 标题与段落整体收紧，避免手机上一页过散 */
+  .tech-proj-readme-body h1, .tech-proj-readme-body.markdown-body h1 { font-size: 20px; margin: 16px 0 8px; }
+  .tech-proj-readme-body h2, .tech-proj-readme-body.markdown-body h2 { font-size: 18px; margin: 16px 0 8px; }
+  .tech-proj-readme-body h3, .tech-proj-readme-body.markdown-body h3 { font-size: 17px; }
+  .tech-proj-readme-body h4, .tech-proj-readme-body.markdown-body h4 { font-size: 16px; }
+  .tech-proj-readme-body.markdown-body p { margin: 0 0 12px; }
 }
 
 /* ── 友链页 ── */
@@ -1352,13 +1392,15 @@ html { touch-action: manipulation; }
   .tech-nav-actions { margin-left: auto; }
   /* 移动端：写作 icon 隐藏（drawer 菜单已有「写作」文字入口，避免重复） */
   .tech-nav-actions a.tech-icon-btn { display: none; }
-  .tech-main { padding: 24px 0 48px; }
+  .tech-main { padding: 18px 0 32px; }
   .tech-main:has(.tech-page-head--center) { padding-top: 0; }
   .tech-main:has(.tech-about-hero) { padding-top: 24px; }
   .tech-main:has(.tech-proj) { padding-top: 16px; }
   /* 移动端回到顶部按钮上移，避免遮挡页脚备案文字（scrolled 压缩态同样覆盖） */
   .tech-top, .tech-top.scrolled { bottom: calc(72px + env(safe-area-inset-bottom)); }
   .tech-post-title-lg { font-size: 24px; }
+  /* 移动端文章头部收紧：标题下留白与分隔线间距缩小，避免顶部一大片空白 */
+  .tech-post-header { margin-bottom: 14px; padding-bottom: 10px; }
   .tech-page-title { font-size: 24px; }
   .tech-page-head--center { padding: 32px 4px 32px; margin-bottom: 24px; }
   /* 关于页：移动端作者卡收紧内边距 */
@@ -1392,16 +1434,24 @@ html { touch-action: manipulation; }
     /* 中文正文不加字间距：0.03em 在 16px 下约 0.5px/字，移动端视觉明显发「散」（用户反馈） */
     font-size: 16px; line-height: 1.6; letter-spacing: normal;
   }
-  /* 移动标题梯度：22/20/18/17/16.5/16，h1 与 h2 有区分度 */
-  .tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 22px; }
+  /* 移动标题梯度：20/18/17/16/15.5/15，与页面标题 24px 拉开，避免双标题打架 */
+  .tech-post-body h1, .tech-post-body.markdown-body h1 { font-size: 20px; padding-bottom: 0; border-bottom: 0; }
   .tech-post-body h2, .tech-post-body.markdown-body h2 {
-    font-size: 20px; padding-bottom: 7px;
+    font-size: 18px; padding-bottom: 7px;
   }
-  .tech-post-body h3, .tech-post-body.markdown-body h3 { font-size: 18px; }
-  .tech-post-body h4, .tech-post-body.markdown-body h4 { font-size: 17px; }
-  .tech-post-body h5, .tech-post-body.markdown-body h5 { font-size: 16.5px; }
-  .tech-post-body h6, .tech-post-body.markdown-body h6 { font-size: 16px; }
-  .tech-post-body p, .tech-post-body.markdown-body p { margin: 0 0 24px; }
+  .tech-post-body h3, .tech-post-body.markdown-body h3 { font-size: 17px; }
+  .tech-post-body h4, .tech-post-body.markdown-body h4 { font-size: 16px; }
+  .tech-post-body h5, .tech-post-body.markdown-body h5 { font-size: 15.5px; }
+  .tech-post-body h6, .tech-post-body.markdown-body h6 { font-size: 15px; }
+  /* 段距再收紧到 13px：门户式密度，一屏能多看好几行 */
+  .tech-post-body p, .tech-post-body.markdown-body p { margin: 0 0 13px; }
+  /* 标题上下留白同步收紧 */
+  .tech-post-body h1, .tech-post-body.markdown-body h1,
+  .tech-post-body h2, .tech-post-body.markdown-body h2,
+  .tech-post-body h3, .tech-post-body.markdown-body h3,
+  .tech-post-body h4, .tech-post-body.markdown-body h4,
+  .tech-post-body h5, .tech-post-body.markdown-body h5,
+  .tech-post-body h6, .tech-post-body.markdown-body h6 { margin: 16px 0 8px; }
   /* 不使用两端对齐：justify 会拉伸含短行的段落字距，移动端观感发「散」（用户反馈，justify 移除） */
 }
 
