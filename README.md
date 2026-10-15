@@ -496,7 +496,8 @@ rm -rf storage/cache/templates/*
 
 - 本次无需改动数据库结构与 Nginx 配置，覆盖文件即可；静态错误页（403/404/50x）已同步重建。
 
-
+<details>
+<summary><b>📜 历史版本日志（点击展开）</b></summary>
 
 ### 从 2.7.3 升级到 2.7.4
 
@@ -682,9 +683,6 @@ rm -rf storage/cache/templates/*
 - 修复：改为**按可信代理列表**判定——仅当 `REMOTE_ADDR` 命中新增配置项 `trusted_proxies` 时才解析代理头，并逐段校验为合法 IP 后才返回；未配置该列表时一律使用 `REMOTE_ADDR`。
 - 配置：`config/config.sample.php` 新增 `trusted_proxies` 段，并逐项补全中文注释。
 - **升级动作**：本版无数据库结构与 nginx 配置变更。若站点部署在反向代理（nginx/CDN）之后，请在 `config/config.php` 补上 `'trusted_proxies' => ['代理机 IP'],`，否则客户端真实 IP 会记为代理地址、防爆破粒度变粗；直连部署无需改动。
-
-<details>
-<summary><b>📜 历史版本日志（点击展开）</b></summary>
 
 ### 从 2.6.6 升级到 2.6.7
 
