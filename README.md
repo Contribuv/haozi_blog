@@ -1,10 +1,10 @@
-﻿# Haozi Blog（PHP 版）
+# Haozi Blog（PHP 版）
 
 > **infowe.site 博客系统的 PHP 实现：单管理员 · 轻量 · 开箱即用 · 自带图形化安装向导 · 无需 Python 环境**
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.5-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.6-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,16 +469,34 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.5**
+当前版本：**2.7.6**
 
 ### v2.7.6
 
 **修复**
-- 版本号同步：core/Service/Context.php VERSION 更新为 2.7.6
-- 友链申请成功页：提交成功后重定向到独立成功页（PRG模式，避免刷新重复提交），图标改为 SVG，文案优化
-- 技术修复：修复 tech-btn-primary hover/active 在浅色/深色主题下文字颜色问题
+
+- **版本号同步**：`core/Service/Context.php` 的 `VERSION` 更新为 2.7.6。
+- **友链申请成功页**：提交成功后重定向到独立成功页（PRG 模式，避免刷新重复提交），图标改为 SVG，文案优化。
+- **按钮悬停 / 按下状态色**：修复 `tech-btn-primary` 的 hover / active 在浅色、深色主题下的文字颜色问题。
 
 <details><summary>v2.7.5（历史变更）</summary>
+
+### v2.7.5
+
+**修复**
+
+- **「取消升级」后刷新页面又回到「升级中」**：取消状态改由服务端记录（进度接口透出 `cancel_requested` / `cancel_at`），刷新后会正确显示「正在取消…」或「已中断」，不再把升级浮窗重新弹出来。
+- **取消无响应死循环**：已请求取消、但进程心跳在宽限期（45 秒）内毫无推进时，判定为进程已卡死/被杀，`取消` 与 `清除升级状态` 会立即把状态收敛为终态，不再出现「点了没反应、刷新又回来」的死循环。
+- **升级下载源排序**：首选平台（GitHub）处于熔断窗口时不再被排到最前，改由可用的 Gitee 优先，避免对不通的直连与慢速镜像白等连接超时（此前「长时间卡住看似失败」的根因）。
+
+**优化**
+
+- **评论图片浮窗支持触屏手势**：双指捏合缩放（1–5 倍）、放大后单指拖动查看、双击快速放大/还原；点空白处 / 关闭按钮 / 按 Esc 关闭，关闭后自动复位缩放与位移。
+- **阅读进度条覆盖更多页面**：除文章页、项目页（锚定正文）外，首页、文章列表、标签、搜索等长页面也会显示顶部滚动进度条（锚定主内容区）；内容不足一屏的短页面进度恒为 0、不可见。
+
+**升级说明**
+
+- 本次无需改动数据库结构与 Nginx 配置，覆盖文件即可；静态错误页（403/404/50x）已同步重建。
 
 ### v2.7.4
 
