@@ -863,8 +863,8 @@ html[data-theme-mode="auto"] #theme-toggle::after {
 [data-theme="dark"] .tech-btn-primary { color: #0d1117; }
 /* primary hover：浅色加深 / 深色提亮——两端都朝「对比度变好」的方向反馈，不再无脑提亮 */
 @media (hover: hover) and (pointer: fine) {
-  .tech-btn-primary:hover { filter: brightness(.92); }
-  [data-theme="dark"] .tech-btn-primary:hover { filter: brightness(1.12); }
+  .tech-btn-primary:hover { filter: brightness(.92); color: #fff; }
+  [data-theme="dark"] .tech-btn-primary:hover { filter: brightness(1.12); color: #0d1117; }
 }
 /* 许可文字与按钮组同排，靠右对齐；窄屏折行时恢复左对齐 */
 .tech-license { font-size: 13px; color: var(--text-secondary); margin: 0 0 0 auto; }
@@ -1590,7 +1590,8 @@ html { touch-action: manipulation; }
               background-color .2s ease, transform .12s ease;
 }
 .tech-btn:active { transform: translateY(1px); }
-.tech-btn-primary:active { filter: brightness(.95); }
+.tech-btn-primary:active { filter: brightness(.95); color: #fff; }
+[data-theme="dark"] .tech-btn-primary:active { color: #0d1117; }
 /* 项目筛选芯片：可点击语义 + hover/焦点平滑 */
 .tech-lang-link { cursor: pointer; transition: color .15s ease, transform .15s ease, border-color .15s ease; }
 @media (hover: hover) and (pointer: fine) { .tech-lang-link:hover { transform: translateY(-1px); } }

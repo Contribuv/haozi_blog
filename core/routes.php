@@ -20,6 +20,7 @@ return [
         ['GET', '/about', 'front/PageController@about'],
         ['GET', '/links', 'front/PageController@links'],
         ['ANY', '/links/apply', 'front/PageController@linksApply'],
+        ['GET', '/links/apply/success', 'front/PageController@linksApplySuccess'],
         ['GET', '/status', 'front/StatusController@page'],
         ['GET', '/api/status', 'front/StatusController@api'],
         ['GET', '/projects', 'front/ProjectController@index'],

@@ -74,9 +74,26 @@ class PageController extends BaseController
                 null,
                 'pending'
             );
-            Flash::success('申请已提交，等待管理员审核');
-            Response::redirect('/links');
+            // PRG：重定向到成功页，避免刷新重复提交
+            Response::redirect('/links/apply/success');
         }
         $this->render('links_apply.html', ['form' => null]);
+    }
+
+    /** 友链申请提交成功页（提示需博主上线审核后才会显示） */
+    public function linksApplySuccess(): void
+    {
+        if (!Context::navEnabled('links')) {
+            $this->abort404();
+        }
+        // 博主称呼：取后台「博主资料 → 博主名称」，留空依次回退站点名、通用称呼
+        $reviewer = trim((string) Settings::get('author', ''));
+        if ($reviewer === '') {
+            $reviewer = trim((string) Settings::get('blog_name', ''));
+        }
+        if ($reviewer === '') {
+            $reviewer = '博主';
+        }
+        $this->render('links_apply_success.html', ['reviewer' => $reviewer]);
     }
 }
