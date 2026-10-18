@@ -18,7 +18,12 @@
   --c-card:transparent;
   --c-sub:var(--bg-subtle);
   --c-border:var(--border);
-  --c-border-h:var(--border-strong, var(--border));
+  /* 楼层卡 / 表单卡专用描边：比 --c-border 再淡一档（V5 方案）。
+     目标是「能看出有边界，但不形成一叠平行线噪音」；
+     输入框 / 按钮 / 缩略图仍用 --c-border，保证可点元素的可见性不被削弱。 */
+  --c-hairline:color-mix(in srgb, var(--c-text) 8%, transparent);
+  /* 卡片 hover 提亮：与淡描边同源加深，避免从 8% 直接跳到 --border-strong 的突兀感 */
+  --c-border-h:color-mix(in srgb, var(--c-text) 22%, transparent);
   --c-text:var(--text);
   --c-text2:var(--text-secondary, var(--text));
   --c-text3:var(--text-tertiary, var(--text-secondary, var(--text)));
@@ -45,15 +50,18 @@
 .cmt-notice b{color:var(--c-accent);font-weight:600}
 
 /* ── 楼层组 ── */
-.cmt-thread{padding:18px 20px;border-radius:var(--c-radius);background:var(--c-card);border:1px solid var(--c-border);transition:border-color .18s}
-.cmt-thread+.cmt-thread{margin-top:14px}
+.cmt-thread{padding:18px 20px;border-radius:var(--c-radius);background:var(--c-card);border:1px solid var(--c-hairline);transition:border-color .18s}
+/* 楼层间 18px > 卡内回复间距 14px：靠间距层级把「楼层边界」立起来，淡描边只做兜底提示 */
+.cmt-thread+.cmt-thread{margin-top:18px}
 @media (hover:hover) and (pointer:fine){.cmt-thread:hover{border-color:var(--c-border-h)}}
 /* 表单卡与独立 details 卡同享描边提亮反馈；.cmt-form.is-inline 无描边故无变化 */
 @media (hover:hover) and (pointer:fine){.cmt-form:hover,.cmt-box:hover{border-color:var(--c-border-h)}}
 
 /* tech 皮肤楼层与 default 同构：每条根评论一张卡（楼中楼在卡内）。
    此前用 .cmt-skin-line 大外框把全部楼层连同表单圈在一起，只靠淡横线分区，
-   视觉上「全挤一块」，故取消外框与扁平覆盖，皮肤差异只保留配色 */
+   视觉上「全挤一块」，故取消外框与扁平覆盖。
+   V5：卡面仍不着色，描边由 --border 降为 --c-hairline（正文色 8%）；
+   楼层间距提到 18px（大于卡内回复的 14px），用间距层级替代重描边来立边界 */
 
 /* ── 评论条目（根与回复同构，仅头像尺寸/字号不同） ── */
 .cmt-item{display:flex;gap:var(--gap)}
@@ -108,7 +116,7 @@ a.cmt-author{color:var(--c-text);text-decoration:none}
 @media (hover:hover) and (pointer:fine){ .cmt-fold:hover{text-decoration:underline} }
 
 /* ── 表单：独立一张卡（与评论列表并列），卡内 details 不再重复描边与内距 ── */
-.cmt-form{margin-top:20px;background:var(--c-card);border:1px solid var(--c-border);border-radius:var(--c-radius);padding:14px 16px}
+.cmt-form{margin-top:20px;background:var(--c-card);border:1px solid var(--c-hairline);border-radius:var(--c-radius);padding:14px 16px}
 .cmt-form.is-inline{margin-top:16px;background:none;border:none;padding:0;border-radius:0}
 .cmt-box{background:var(--c-sub);border:1px solid var(--c-border);border-radius:var(--c-radius);overflow:hidden}
 .cmt-form .cmt-box{background:none;border:none;border-radius:0;overflow:visible}

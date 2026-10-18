@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.6-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.7-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,20 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.6**
+当前版本：**2.7.7**
+
+### v2.7.7
+
+**优化**
+
+- **评论区楼层卡描边弱化**：楼层卡与表单卡的 1px 描边由主题边框色（亮色 `#d0d7de` / 暗色 `#30363d`）改为正文色 8% 的淡描边，只保留可感知的轮廓，多条评论并排时不再形成一叠平行线，观感更干净。卡片 hover 提亮同步改为同源加深（正文色 22%），避免淡描边与深色 hover 之间的突兀跳变；输入框、表情 / 图片上传按钮、评论图片缩略图仍沿用原描边，可点元素的可见性不受影响。
+- **评论区楼层间距拉开层级**：楼层之间的间距 14 → **18px**，大于卡内回复间距（14px），用「卡间 > 卡内」的间距差把楼层边界立起来，淡描边只作兜底提示。
+
+**升级说明**
+
+- 本版无数据库结构与 Nginx 配置变更，直接替换程序文件即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
+
+<details><summary>v2.7.6（历史变更）</summary>
 
 ### v2.7.6
 
@@ -478,8 +491,6 @@ rm -rf storage/cache/templates/*
 - **版本号同步**：`core/Service/Context.php` 的 `VERSION` 更新为 2.7.6。
 - **友链申请成功页**：提交成功后重定向到独立成功页（PRG 模式，避免刷新重复提交），图标改为 SVG，文案优化。
 - **按钮悬停 / 按下状态色**：修复 `tech-btn-primary` 的 hover / active 在浅色、深色主题下的文字颜色问题。
-
-<details><summary>v2.7.5（历史变更）</summary>
 
 ### v2.7.5
 
