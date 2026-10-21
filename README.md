@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.7-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.8-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,26 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.7**
+当前版本：**2.7.8**
+
+### v2.7.8
+
+**改进**
+
+- **PC 端全站字号整体收敛一档**：正文基准 16px → 15px，文章 / 项目 README 正文同步降到 15px，行高保持 1.65；正文标题梯度由 22/20/18/16.5/16/15.5 调整为 20/18/16.5/15.5/15/14.5，与页面标题重新拉开层级。列表页文章标题 18px → 17px、摘要 15px → 14px；文章大标题 26px → 24px；页面标题 28px → 26px；首页 Hero 标题宽屏 40px → 34px（基础 32px → 28px）、格言 17px → 15px；项目卡片名、README 小标题、状态区块标题、友链名称同步下调。导航、评论、侧栏目录、页脚等原本已偏小的文字保持不变，移动端既有 14px 档位与断点覆盖完全不受影响。
+- **项目文档区去掉卡片边框**：项目详情页 README 原先是一张「1px 描边 + 10px 圆角 + 24px 内边距 + 白底」的卡片，与文章内页无边框正文不一致。现改为无边框、无圆角、无内边距、透明背景，「项目文档」标题行的底部分隔线一并移除，正文左边缘与页面上方标题、简介对齐；移动端同步去掉 16px 内边距，避免窄屏二次缩进。
+
+**修复**
+
+- **静态错误页样式同步**：已用 `php bin/build_50x.php` 重新生成 `static/{403,404,50x}.html`，内联样式与新版字号、布局一致，并更新 CSS 版本串。
+
+**升级说明**
+
+- 本版仅涉及 CSS 与静态错误页，无数据库结构、无 PHP 逻辑、无 Nginx 配置变更，直接替换程序文件即可。
+- `themes/tech/theme.css` 与 `static/css/` 的缓存串取自 `Context::VERSION`，版本号已同步 bump 至 2.7.8，升级后 URL 自动变化，无需手动清缓存。
+- 若线上使用静态错误页，部署后可按需重跑 `php bin/build_50x.php`，以修正错误页中记录的本机域名。
+
+<details><summary>v2.7.7（历史变更）</summary>
 
 ### v2.7.7
 
@@ -481,8 +500,6 @@ rm -rf storage/cache/templates/*
 **升级说明**
 
 - 本版无数据库结构与 Nginx 配置变更，直接替换程序文件即可；前台静态资源缓存串取自 `Context::VERSION`，升级后 URL 自动变化，无需额外清缓存。
-
-<details><summary>v2.7.6（历史变更）</summary>
 
 ### v2.7.6
 
