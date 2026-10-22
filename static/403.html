@@ -18,7 +18,7 @@
     </script>
     <title>请求被拒绝 - infowe.site</title>
     <link rel="icon" type="image/svg+xml" href="/static/images/favicon.svg">
-    <link rel="stylesheet" href="/themes/tech/theme.css?t=1792589697">
+    <link rel="stylesheet" href="/themes/tech/theme.css?t=1792670204">
     <link rel="alternate" type="application/rss+xml" title="infowe.site RSS" href="/feed.xml">
     <!-- 社交分享：Open Graph + Twitter Card -->
     <meta property="og:site_name" content="infowe.site">
@@ -1389,7 +1389,7 @@ html { touch-action: manipulation; }
 }
 @media (hover: hover) and (pointer: fine) { .tech-link-card:hover { border-color: var(--accent); } }
 .tech-link-avatar {
-  width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px;
+  width: 44px; height: 44px; flex-shrink: 0; border-radius: 50%;
   object-fit: cover; display: flex; align-items: center; justify-content: center;
   background: var(--bg-subtle); color: var(--text-secondary); font-size: 18px; font-weight: 700;
 }
@@ -1399,6 +1399,44 @@ html { touch-action: manipulation; }
   display: block; font-size: 13px; color: var(--text-secondary); margin: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+/* ── 友链页底部介绍区 ── */
+/* 上边距对齐全站节奏：与 .tech-page-head 到内容的 28px 同档（原 40px 超出全页比例） */
+.tech-links-extra { margin-top: 28px; padding-top: 24px; border-top: 1px solid var(--border); }
+.tech-links-intro p { margin: 0 0 12px; font-size: 14px; line-height: 1.8; color: var(--text-secondary); }
+.tech-links-intro p:last-child { margin-bottom: 0; }
+.tech-links-intro a { color: var(--accent); text-decoration: none; }
+.tech-links-intro a:hover { text-decoration: underline; }
+.tech-links-section { margin-top: 28px; }
+.tech-links-section h2 { font-size: 15px; font-weight: 600; margin: 0 0 10px; color: var(--text); }
+.tech-links-section ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.8; color: var(--text-secondary); }
+/* 本站信息：名片式预览 + 复制动作（长 URL 不再展示成折行糊块） */
+.tech-links-card {
+  display: flex; align-items: center; gap: 14px;
+  border: 1px solid var(--border); border-radius: 8px; padding: 16px;
+}
+.tech-links-card-avatar {
+  width: 56px; height: 56px; flex-shrink: 0; border-radius: 50%;
+  object-fit: cover; background: var(--bg-subtle);
+}
+.tech-links-card-main { min-width: 0; }
+.tech-links-card-name { display: block; font-size: 15px; font-weight: 600; color: var(--text); }
+.tech-links-card-bio { display: block; font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+.tech-links-card-url {
+  display: block; margin-top: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px; color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.tech-links-copyrow { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.tech-copy {
+  appearance: none; margin: 0; padding: 5px 12px;
+  background: transparent; border: 1px solid var(--border); border-radius: 6px;
+  font: inherit; font-size: 13px; color: var(--text-secondary); cursor: pointer;
+  transition: color .15s ease, border-color .15s ease;
+}
+.tech-copy:hover { color: var(--accent); border-color: var(--accent); }
+.tech-copy.copied { color: var(--success); border-color: var(--success); }
 
 /* ── 状态页（官方 svc-* 类名，status.js 依赖） ── */
 .tech-status-section { margin-bottom: 32px; }
@@ -1841,8 +1879,8 @@ X-CSRF: <span class="hl-error">rejected</span></pre>
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
     </button>
 
-    <script src="/themes/tech/theme.js?t=1792589697" defer></script>
-    <script src="/static/js/disable-zoom.js?t=v2.7.7"></script>
+    <script src="/themes/tech/theme.js?t=1792670204" defer></script>
+    <script src="/static/js/disable-zoom.js?t=v2.7.9"></script>
     <script>
     // 项目页「反馈」按钮：点击平滑滚动到评论区并聚焦输入框
     (function () {

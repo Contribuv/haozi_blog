@@ -1,4 +1,4 @@
-/* tech 主题交互：主题切换、移动端抽屉菜单、回到顶部 */
+﻿/* tech 主题交互：主题切换、移动端抽屉菜单、回到顶部 */
 (function () {
   'use strict';
 
@@ -287,3 +287,44 @@
   update();
 })();
 
+
+/* ── 友链页「本站信息」点击复制 ──
+   点击按钮复制 data-copy 内容（站点地址 / 头像 / 现成 HTML 代码），
+   成功后按钮文字短暂切换为「已复制 ✓」。
+   https（含 localhost）走 Clipboard API，普通 http 降级 execCommand。 */
+(function () {
+  'use strict';
+  var btns = document.querySelectorAll('.tech-copy[data-copy]');
+  if (!btns.length) return;
+
+  function fallbackCopy(text, ok) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); ok(); } catch (e) { /* 剪贴板不可用时静默 */ }
+    document.body.removeChild(ta);
+  }
+
+  Array.prototype.forEach.call(btns, function (btn) {
+    btn.addEventListener('click', function () {
+      var text = btn.getAttribute('data-copy');
+      var ok = function () {
+        if (btn.dataset.label === undefined) btn.dataset.label = btn.textContent;
+        btn.textContent = '已复制 ✓';
+        btn.classList.add('copied');
+        setTimeout(function () {
+          btn.textContent = btn.dataset.label;
+          btn.classList.remove('copied');
+        }, 1500);
+      };
+      if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(ok, function () { fallbackCopy(text, ok); });
+      } else {
+        fallbackCopy(text, ok);
+      }
+    });
+  });
+})();

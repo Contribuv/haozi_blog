@@ -45,8 +45,20 @@ class PageController extends BaseController
     /** 友链列表 */
     public function links(): void
     {
+        // 本站头像完整地址：相对路径补全站点根；未设置时回退 favicon
+        $avatar = trim((string) Settings::get('avatar', ''));
+        if ($avatar !== '' && !str_starts_with($avatar, 'http')) {
+            $avatar = Request::baseUrl() . $avatar;
+        }
+        if ($avatar === '') {
+            $avatar = Request::baseUrl() . '/favicon.ico';
+        }
         $this->render('links.html', [
             'links' => \Blog\Model\Link::load('approved'),
+            // 站点根地址（scheme://host）：供友链页「本站信息」卡片展示，方便对方复制回挂
+            'site_url' => Request::baseUrl(),
+            // 头像完整 URL：供「点击复制」按钮一键回填
+            'avatar_url' => $avatar,
         ]);
     }
 
