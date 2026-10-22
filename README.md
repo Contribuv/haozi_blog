@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.10-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.11-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,22 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.10**
+当前版本：**2.7.11**
+
+### v2.7.11
+
+**新增**
+
+- **全页缓存（写时失效）**：前台匿名 GET / HEAD 直接吐 `storage/cache/pages/` 里的整页 HTML，不再进路由与数据库——拨测 / 压测类工具几十上百个节点并发不再打爆 PHP-FPM（此前呈现为随机 502，即 v2.7.10 记录的宝塔 t.bt.cn 测速案）。只缓存 HTTP 200 的 text/html，带 query 只认白名单参数 `page`，其余参数与 `/admin`、`/api`、静态资源、RSS 一律绕行；文件原子写入 + `X-Cache` 响应头便于验证命中。
+- **缓存随内容自动更新**：所有通过 CSRF 的 POST（发 / 改 / 删文章、评论与友链审核、设置、主题切换等后台写操作）在 App 顶层立即清空页面缓存，下一次访问就是最新内容，无需任何手动刷新；前台评论 / 友链申请提交后的跳转页打「免缓存标」保证 flash 提示可见；另有 10 分钟 TTL 兜底，任何没接到失效钩子的角落也会自动刷新。
+
+**升级说明**
+
+- 部署新增 `core/Service/PageCache.php`，替换 `core/App.php`、`core/Response.php` 即可；无数据库结构、无 Nginx 配置变更。
+- `Context::VERSION` 同步 bump 至 2.7.11，主题资源 URL 自动变化，无需手动清缓存。
+- 无静态错误页变更，不必重跑 `php bin/build_50x.php`。
+
+<details><summary>v2.7.10（历史变更）</summary>
 
 ### v2.7.10
 
@@ -482,8 +497,6 @@ rm -rf storage/cache/templates/*
 - 仅涉及 `core/Router.php` 一处逻辑分支，无数据库结构、无 Nginx 配置变更，替换程序文件即可。
 - `Context::VERSION` 同步 bump 至 2.7.10，主题资源 URL 自动变化，无需手动清缓存；线上部署后可用 `curl -I https://站点首页` 验证 HEAD 响应是否恢复 200。
 - 本版不含静态错误页变更，如无需改动域名记录不必重跑 `php bin/build_50x.php`。
-
-<details><summary>v2.7.9（历史变更）</summary>
 
 ### v2.7.9
 

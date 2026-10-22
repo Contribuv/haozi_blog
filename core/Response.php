@@ -7,6 +7,7 @@ class Response
     {
         http_response_code($code);
         header('Content-Type: text/html; charset=utf-8');
+        \Blog\Service\PageCache::store($html, $code);
         echo $html;
         exit;
     }
