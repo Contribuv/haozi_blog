@@ -72,7 +72,7 @@ class PageCache
             self::$key = $key;
             return;
         }
-        // 兜底过期：文件内容头两行是时间戳与长度（格式见 store），过期即当未命中
+        // 兜底过期：文件首行是过期时间戳（格式见 store），过期即当未命中
         $nl = strpos($html, "\n");
         $expires = (int) ($nl !== false ? substr($html, 0, $nl) : 0);
         if ($expires > 0 && time() > $expires) {
@@ -99,8 +99,8 @@ class PageCache
         if (!is_dir($dir) && !@mkdir($dir, 0775, true)) {
             return;
         }
-        // 头两行：过期时间戳、内容长度；内容跟在第三行起
-        $payload = (time() + self::TTL) . "\n" . strlen($html) . "\n" . $html;
+        // 首行是过期时间戳，正文从第二行起（命中端 substr 按同一格式切割）
+        $payload = (time() + self::TTL) . "\n" . $html;
         $tmp = $dir . '/.tmp_' . uniqid('', true);
         if (@file_put_contents($tmp, $payload) !== false) {
             // 原子写：固定文件名读者可能随时在读，rename 保证中间态不可见

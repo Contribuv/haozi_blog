@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.11-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.12-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,20 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.11**
+当前版本：**2.7.12**
+
+### v2.7.12
+
+**修复**
+
+- **页面缓存命中时正文开头混入数字**：缓存文件头部原写有「过期时间戳 + 内容长度」两行元信息，命中输出时只切掉了第一行，第二行的内容长度（如 `26205`）被当作正文开头渲染在页面上。现简化为单行时间戳头，命中输出是纯粹的 HTML。
+
+**升级说明**
+
+- 替换 `core/Service/PageCache.php` 后，**请同时清空服务器 `storage/cache/pages/` 目录**：旧格式缓存文件的头两行结构与新版不兼容，命中会把长度数字吐出来。清空也可以偷懒交给后台任一写操作（如保存一次设置）自动全量失效。
+- 无其他变更，`Context::VERSION` bump 至 2.7.12，主题资源 URL 自动刷新。
+
+<details><summary>v2.7.11（历史变更）</summary>
 
 ### v2.7.11
 
@@ -483,6 +496,8 @@ rm -rf storage/cache/templates/*
 - 部署新增 `core/Service/PageCache.php`，替换 `core/App.php`、`core/Response.php` 即可；无数据库结构、无 Nginx 配置变更。
 - `Context::VERSION` 同步 bump 至 2.7.11，主题资源 URL 自动变化，无需手动清缓存。
 - 无静态错误页变更，不必重跑 `php bin/build_50x.php`。
+
+</details>
 
 <details><summary>v2.7.10（历史变更）</summary>
 
