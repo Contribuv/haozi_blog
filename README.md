@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.8-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.10-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -469,7 +469,21 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.9**
+当前版本：**2.7.10**
+
+### v2.7.10
+
+**修复**
+
+- **HEAD 请求全站 404**：自研路由器 `Router::dispatch()` 只按 GET / POST 分表匹配，HEAD 请求找不到对应路由表直接落 404（`routes['HEAD']` 从未被注册）。而宝塔 t.bt.cn 测站、各类可用性监控用的正是 HEAD 探测，整站会被判「全部 404」——首页 / 文章 / 友链全中。现按 RFC 9110 语义（HEAD ≡ GET 不带响应体）在 HEAD 时回退 GET 路由表匹配：`/`、`/post/*`、`/links` 等全部页面 HEAD 返回 200，GET 行为不受任何影响。
+
+**升级说明**
+
+- 仅涉及 `core/Router.php` 一处逻辑分支，无数据库结构、无 Nginx 配置变更，替换程序文件即可。
+- `Context::VERSION` 同步 bump 至 2.7.10，主题资源 URL 自动变化，无需手动清缓存；线上部署后可用 `curl -I https://站点首页` 验证 HEAD 响应是否恢复 200。
+- 本版不含静态错误页变更，如无需改动域名记录不必重跑 `php bin/build_50x.php`。
+
+<details><summary>v2.7.9（历史变更）</summary>
 
 ### v2.7.9
 
@@ -484,8 +498,6 @@ rm -rf storage/cache/templates/*
 - 复制逻辑（Clipboard API + http 环境 execCommand 降级）挂在 `themes/tech/theme.js`，`Context::VERSION` 同步 bump 至 2.7.9，主题资源 URL 自动变化，无需手动清缓存。
 - 无数据库结构、无 Nginx 配置变更；`PageController::links()` 新增传入 `site_url` / `avatar_url`，替换程序文件即可。
 - 静态错误页已用 `php bin/build_50x.php` 重新生成 `static/{403,404,50x}.html`，内联样式与本版一致；若线上部署后友链页样式未刷新，可重跑该脚本。
-
-<details><summary>v2.7.8（历史变更）</summary>
 
 ### v2.7.8
 

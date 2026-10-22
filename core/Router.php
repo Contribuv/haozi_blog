@@ -63,7 +63,11 @@ class Router
     {
         $method = Request::method();
         $uri = Request::uri();
-        $handlers = $this->routes[$method] ?? [];
+        // HEAD 按路由表语义等价于 GET（RFC 9110：HEAD ≡ GET 不带响应体）。
+        // 不回退的话，HEAD 请求在 GET 表里必然扑空 → 404；
+        // 宝塔 t.bt.cn 测站用的正是 HEAD 探测，全站会被判「404」。
+        $handlers = $this->routes[$method]
+            ?? ($method === 'HEAD' ? ($this->routes['GET'] ?? []) : []);
         foreach ($handlers as $path => $handler) {
             if ($this->match($path, $uri, $params)) {
                 $this->invoke($handler, $params);
