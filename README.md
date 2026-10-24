@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.14-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.15-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -498,7 +498,22 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.14**
+当前版本：**2.7.15**
+
+### v2.7.15
+
+**安全修复**
+
+- **HTTPS 下 Session Cookie 强制 Secure**：此前 `config.php` 的 `session.secure` 写死 `false` 时，HTTPS 站点下发的 `PHPBLOG_SESSID` 也没有 `Secure` 标记，一旦出现明文请求（http、混合内容、代理降级）会话 Cookie 可能被截获。现在 HTTPS 请求下无论配置怎么写都强制 Secure；HTTP（本地调试）仍按配置，默认不加。
+- **反代 HTTPS 判断统一**：Cookie 的 `secure` 判断改用 `Request::isSecure()`，只信任 `trusted_proxies` 中的 `X-Forwarded-Proto` / `X-Forwarded-Port`，避免直连伪造头把 Cookie 误标为 Secure（导致 HTTP 下会话失效）。
+
+**升级说明**
+
+- 无数据库结构变更，替换 `core/bootstrap.php`；`config/config.sample.php` 的注释同步更新。
+- 验证：`curl -I https://站点/` 应看到 `Set-Cookie: ...; Secure; HttpOnly; SameSite=Lax`。
+- 本地 `http://127.0.0.1:8000` 调试不受影响，Cookie 仍不带 Secure。
+
+<details><summary>v2.7.14（历史变更）</summary>
 
 ### v2.7.14
 
@@ -519,8 +534,6 @@ rm -rf storage/cache/templates/*
 - 部署后到后台「博客设置 → 站点信息」填写站点地址；已全站 HTTPS 的站点勾选「强制 HTTPS」即可让 http 访问 301。
 - 本地调试无需任何配置；反代部署请在 `config.php` 的 `trusted_proxies` 填上代理 IP，否则 `X-Forwarded-Proto` 不被采信，可能误判为 http。
 - 无 Nginx 配置变更，无需重跑 `build_50x.php`。
-
-<details><summary>v2.7.13（历史变更）</summary>
 
 ### v2.7.13
 

@@ -47,7 +47,7 @@ return [
         'lifetime' => 3600,         // 会话有效期（秒）
         'path' => '/',              // Cookie 作用路径
         'domain' => '',             // Cookie 作用域，留空表示当前域名
-        'secure' => false,          // 仅经 HTTPS 传输；HTTPS 站点建议改 true
+        'secure' => false,          // 仅 HTTP 环境需要显式开启；HTTPS 请求下程序会自动强制 Secure
         'httponly' => true,         // 禁止 JavaScript 读取，降低 XSS 窃取风险
         'samesite' => 'Lax',        // 跨站携带策略：Lax / Strict / None
     ],

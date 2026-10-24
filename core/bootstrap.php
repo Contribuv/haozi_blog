@@ -41,11 +41,10 @@ spl_autoload_register(function ($class) {
 
 // CLI 或已输出内容时不再启动会话，避免 "headers already sent" 警告
 if (PHP_SAPI !== 'cli' && !headers_sent() && empty($_SESSION)) {
-    // secure：HTTPS 请求下自动置 true，避免明文信道泄露会话 cookie；配置项仅作显式覆盖
-    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['SERVER_PORT'] ?? 0) == 443)
-        || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
-    $secure = isset($config['session']['secure']) ? (bool) $config['session']['secure'] : $isHttps;
+    // secure：HTTPS 请求下强制 true（即使 config 里写了 false），避免明文信道泄露会话 cookie；
+    // HTTP（本地调试）仍按配置，默认 false。
+    $isHttps = \Blog\Request::isSecure();
+    $secure = $isHttps || (bool) ($config['session']['secure'] ?? false);
     session_set_cookie_params([
         'lifetime' => $config['session']['lifetime'] ?? 3600,
         'path' => $config['session']['path'] ?? '/',
