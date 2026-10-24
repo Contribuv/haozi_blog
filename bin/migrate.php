@@ -19,6 +19,7 @@
 
 declare(strict_types=1);
 
+require __DIR__ . '/_guard.php';
 require __DIR__ . '/../core/bootstrap.php';
 
 use Blog\Service\SqliteImport;

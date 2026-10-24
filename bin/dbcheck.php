@@ -1,5 +1,6 @@
 <?php
 // 数据库连通性与表结构检查
+require __DIR__ . '/_guard.php';
 require __DIR__ . '/../core/bootstrap.php';
 
 try {

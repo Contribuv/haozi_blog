@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/_guard.php';
+
 /**
  * 历史图片水印批量重做（由运维 / cron 手动触发）。
  * 用法：php bin/wm_refresh.php [文本] [位置 br|bl|tr|tl|bc] [档位 s|m|l]

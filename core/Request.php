@@ -44,7 +44,7 @@ class Request
         return ($https ? 'https' : 'http') . '://' . self::host();
     }
 
-    /** 客户端 IP：仅当 REMOTE_ADDR 本身是回环/私有地址（即确实在反代后面）才采信 XFF 头 */
+    /** 客户端 IP：仅当 REMOTE_ADDR 命中 config 的 trusted_proxies 时才采信 XFF / X-Real-IP */
     public static function ip(): string
     {
         $remote = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
@@ -69,9 +69,4 @@ class Request
         return 'unknown';
     }
 
-    /** 判断 IP 是否回环/私有/保留段（含 IPv6 对应写法），用于判定是否处于反代之后 */
-    private static function isPrivateIp(string $ip): bool
-    {
-        return filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false;
-    }
 }

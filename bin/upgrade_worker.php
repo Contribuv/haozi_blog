@@ -13,10 +13,7 @@
 declare(strict_types=1);
 
 // 只允许命令行调用：本脚本会无鉴权地执行升级，绝不能经 HTTP 直接访问
-if (PHP_SAPI !== 'cli') {
-    http_response_code(403);
-    exit('Forbidden');
-}
+require __DIR__ . '/_guard.php';
 
 require __DIR__ . '/../core/bootstrap.php';
 

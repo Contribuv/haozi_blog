@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/_guard.php';
+
 /**
  * 错误页自检：验证 ErrorPage 的主题渲染、降级与防重入守卫。
  * 用法：php bin/check_errorpage.php

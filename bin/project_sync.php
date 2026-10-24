@@ -6,6 +6,7 @@ declare(strict_types=1);
  * 用法：php bin/project_sync.php <all|id>
  */
 
+require __DIR__ . '/_guard.php';
 require __DIR__ . '/../core/bootstrap.php';
 
 use Blog\Service\ProjectSync;

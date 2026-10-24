@@ -1,5 +1,6 @@
 <?php
 // 临时：核对 projects 表字段差异（MySQL vs 原 SQLite）
+require __DIR__ . '/_guard.php';
 require __DIR__ . '/../core/bootstrap.php';
 $pdo = \Blog\Db::pdo();
 echo "--- MySQL projects ---\n";

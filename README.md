@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.12-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.13-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -95,7 +95,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 ├── config/                  配置
 │   ├── config.sample.php    配置模板（config.php 由安装向导生成，不入库）
 │   └── nginx.conf.example   伪静态配置样例（可整段复制到宝塔「伪静态」）
-├── bin/                     CLI 脚本（migrate / project_sync / wm_refresh / schema / dbcheck / sqlitecheck / build_50x / check_*）
+├── bin/                     CLI 脚本（migrate / project_sync / wm_refresh / schema / dbcheck / sqlitecheck / build_50x / check_*，均带 `_guard.php` 防 Web 触发）
 ├── data/                    运行期数据（项目同步状态、升级缓存）
 ├── fonts/                   内置中文字体（文泉驿微米黑，Apache-2.0）
 ├── storage/                 缓存（模板编译产物）、会话、日志
@@ -203,7 +203,21 @@ php bin/migrate.php         # 结构迁移
 
 ```nginx
 # 敏感目录与文件：禁止 Web 访问（缺了这条 config/config.php 可被直接下载）
-location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { return 404; }
+# 必须用 ^~ 前缀匹配，不能写成 location ~ ^/(config|...)：宝塔等面板常把
+# location ~ \.php$ 排在伪静态之前，正则按出现顺序先到先得，/bin/*.php 会先被
+# PHP 处理器接走，目录封锁形同虚设（线上实测 /bin/check_ip.php 可执行）。
+# ^~ 命中后不再检查任何正则，与书写顺序、外部 include 都无关。
+location ^~ /config/  { return 404; }
+location ^~ /core/    { return 404; }
+location ^~ /storage/ { return 404; }
+location ^~ /data/    { return 404; }
+location ^~ /backups/ { return 404; }
+location ^~ /bin/     { return 404; }
+location ^~ /plugins/ { return 404; }
+location ^~ /docs/    { return 404; }
+location ^~ /fonts/   { return 404; }
+# 兜住不带尾斜杠的目录请求（如 /bin），避免 301 暴露目录存在
+location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)$ { return 404; }
 location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
 location ~ ^/themes/.+\.(html|json)$        { return 404; }
@@ -244,6 +258,7 @@ location ~ \.php$ {
 注意事项：
 
 - **`/admin` 无需任何特殊配置**，根 `index.php` 已注册后台路由。
+- **敏感目录必须用 `location ^~ /bin/` 前缀写法**，不要只写一条 `location ~ ^/(config|core|…)(/|$)`：nginx 正则 location 按出现顺序匹配，宝塔等面板常把 `location ~ \.php$` 排在伪静态之前，`.php` 请求会先被 PHP 处理器接走，目录正则形同虚设。实测线上 `/bin/check_ip.php`、`/bin/dbcheck.php` 能直接执行并吐出库名与表结构；改成 `^~` 后命中即不再检查正则，与顺序无关。代码侧 `bin/_guard.php` 也做了兜底：非 CLI 请求一律 404。
 - **`themes/` 的封锁规则不能漏**，否则主题模板源码（`base.html` 等）可被直接下载。
 - **`error_page` 一律指向预渲染静态文件，绝不写 `/index.php`**。404/403/502 恰恰发生在 PHP 通道本身不可用的时候（文件没上传、fastcgi 挂了），此时让 nginx 内部再走一次 PHP 只会得到 nginx 原生页。静态页由 `php bin/build_50x.php` 从 `themes/<主题>/{404,403,502}.html` 预渲染并内联 theme.css，nginx 直接吐文件，不经过 PHP。改了主题样式后重新执行该脚本。
 - **排查 404 是 nginx 原生页还是主题页**：先在项目根放一个探针 `echo '<?php echo "PHPOK";' > t.php`，访问 `https://你的域名/t.php`。返回 `PHPOK` 说明 PHP 通道正常，是文件没上传到位（1.x 升级后 `index.php` 在根、`public/` 已删）；返回 nginx 原生页才是 `location ~ \.php$` 没生效，用 `nginx -T 2>/dev/null | grep -n 'location\|fastcgi\|root '` 查实际配置。
@@ -260,7 +275,17 @@ server {
     root /www/wwwroot/www.infowe.site;
     index index.php;
 
-    location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { return 404; }
+    # 敏感目录与文件：禁止 Web 访问（必须 ^~，理由见上文「为什么用 ^~」）
+    location ^~ /config/  { return 404; }
+    location ^~ /core/    { return 404; }
+    location ^~ /storage/ { return 404; }
+    location ^~ /data/    { return 404; }
+    location ^~ /backups/ { return 404; }
+    location ^~ /bin/     { return 404; }
+    location ^~ /plugins/ { return 404; }
+    location ^~ /docs/    { return 404; }
+    location ^~ /fonts/   { return 404; }
+    location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)$ { return 404; }
     location ~ /\.            { return 404; }
     location ^~ /.well-known/ { allow all; }
     location ~ ^/themes/.+\.(html|json)$        { return 404; }
@@ -469,7 +494,26 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.12**
+当前版本：**2.7.13**
+
+### v2.7.13
+
+**安全修复**
+
+- **`bin/` 目录可被公网直接执行**：站点运行目录就是项目根，而宝塔等面板把 `location ~ \.php$` 排在伪静态的目录封锁之前，nginx 正则 location 按出现顺序先到先得，`/bin/*.php` 会被 PHP 处理器接走——线上实测 `/bin/check_ip.php` 返回 200 并输出自检内容，`/bin/dbcheck.php` 直接吐出库名与各表行数；`wm_refresh` / `project_sync` / `migrate` / `upgrade_worker` 等有写操作甚至改代码的脚本同样可被匿名触发。现在两层同时收紧：
+  - **配置侧**：敏感目录封锁由一条正则改为 `location ^~ /config/`、`location ^~ /bin/` 等前缀写法。`^~` 命中后不再检查任何正则，与书写顺序、外部 include 无关；`config/nginx.conf.example` 与 README 的伪静态 / server 示例已同步。
+  - **代码侧**：新增 `bin/_guard.php`，所有 `bin/*.php` 在首部引入；非 CLI 请求（含直接访问 `_guard.php` 本身）一律返回 404。即使服务器漏配规则，脚本也不会执行。
+- **`bin/check_ip.php` 用例与新 IP 逻辑对齐**：v2.6.8 起改为按 `config.php` 的 `trusted_proxies` 白名单采信代理头，但自检脚本仍按旧的「私网即信任」假设断言，线上跑出 3 个 FAIL。现按白名单逐条重写，并补 `X-Real-IP` 兜底用例。
+- **`core/Request.php`** 清理了未使用的 `isPrivateIp()`，并修正与实现不符的注释。
+
+**升级说明**
+
+- **必须更新服务器伪静态**：把原来的 `location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$)` 一行替换为 `config/nginx.conf.example` 里新的 `location ^~ /…/` 段落，再 `nginx -t && nginx -s reload`。只替换程序文件也能让 `bin/*.php` 在 PHP 层返回 404，但服务器层仍会白跑一趟 PHP，建议同步改掉。
+- 替换 `bin/` 全部脚本（含新增的 `_guard.php`）与 `core/Request.php` 即可，无数据库结构变更，无需重跑 `build_50x.php`。
+- 验证：`curl -I https://站点/bin/dbcheck.php` 应返回 404；`php bin/check_ip.php` 应输出「全部通过」。
+- **部署后建议排查访问日志**：`grep -E '/bin/(dbcheck|schema|wm_refresh|project_sync|migrate|upgrade_worker)' /www/wwwlogs/站点.log`，确认暴露期间是否被外部请求过。
+
+<details><summary>v2.7.12（历史变更）</summary>
 
 ### v2.7.12
 
@@ -481,8 +525,6 @@ rm -rf storage/cache/templates/*
 
 - 替换 `core/Service/PageCache.php` 后，**请同时清空服务器 `storage/cache/pages/` 目录**：旧格式缓存文件的头两行结构与新版不兼容，命中会把长度数字吐出来。清空也可以偷懒交给后台任一写操作（如保存一次设置）自动全量失效。
 - 无其他变更，`Context::VERSION` bump 至 2.7.12，主题资源 URL 自动刷新。
-
-<details><summary>v2.7.11（历史变更）</summary>
 
 ### v2.7.11
 

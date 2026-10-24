@@ -1,6 +1,8 @@
 <?php
 declare(strict_types=1);
 
+require __DIR__ . '/_guard.php';
+
 /**
  * 重新生成静态错误页 static/{404,403,50x}.html。
  *

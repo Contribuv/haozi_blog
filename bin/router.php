@@ -6,6 +6,8 @@
  * ① 静态文件自行输出并带正确 MIME（Windows 的 mime_content_type 不认 .css）；
  * ② 白名单外的路径一律交给前端控制器，避免 config/core 等源码被直接读到。
  */
+require __DIR__ . '/_guard.php';
+
 $root = dirname(__DIR__);
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?: '/';
 $file = $root . $path;

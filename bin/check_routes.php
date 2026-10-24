@@ -1,5 +1,8 @@
 <?php
 declare(strict_types=1);
+
+require __DIR__ . '/_guard.php';
+
 /**
  * 一致性自检：core/routes.php 与 core/Url.php::ROUTES 是否一一对应；
  * 模板中出现的 url_for('xxx') 是否都能解析。

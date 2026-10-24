@@ -26,7 +26,20 @@
 # ───────────────────────────────────────────────────────────────
 
 # 敏感目录与文件：禁止 Web 访问
-location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)(/|$) { return 404; }
+# ⚠️ 必须用 ^~ 前缀匹配：宝塔等面板常把 location ~ \.php$ 排在伪静态之前，
+#    正则按出现顺序先到先得，/bin/*.php 会先被 PHP 处理器接走，目录正则失效。
+#    ^~ 命中后不再检查任何正则，与书写顺序、外部 include 都无关。
+location ^~ /config/  { return 404; }
+location ^~ /core/    { return 404; }
+location ^~ /storage/ { return 404; }
+location ^~ /data/    { return 404; }
+location ^~ /backups/ { return 404; }
+location ^~ /bin/     { return 404; }
+location ^~ /plugins/ { return 404; }
+location ^~ /docs/    { return 404; }
+location ^~ /fonts/   { return 404; }
+# 兜住不带尾斜杠的目录请求（如 /bin），避免 301 暴露目录存在
+location ~ ^/(config|core|storage|data|backups|bin|plugins|docs|fonts)$ { return 404; }
 location ~ /\.            { return 404; }
 location ^~ /.well-known/ { allow all; }
 location ~ ^/themes/.+\.(html|json)$        { return 404; }

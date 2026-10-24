@@ -5,6 +5,8 @@
  */
 declare(strict_types=1);
 
+require __DIR__ . '/_guard.php';
+
 define('PHP_BLOG_SKIP_PLUGINS', 1);
 require __DIR__ . '/../core/bootstrap.php';
 
