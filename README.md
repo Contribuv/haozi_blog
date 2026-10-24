@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.16-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.17-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -445,6 +445,8 @@ php bin/config_sync.php --write --yes    # 备份后合并缺失项
 脚本只补缺失键，已有值（包括数据库密码和自定义值）一律不覆盖；写入前备份为 `config.php.bak.YmdHis`，输出只打印键名，不打印配置值。
 
 > `--write` 会重新生成 `config.php`，原有注释不会保留（值不变）。介意注释的话只跑只读检查，按输出手动补。
+>
+> 写入后文件权限固定为 `0644`（`config/` 已被 nginx 封锁，不会公网下载），保证 PHP-FPM 可读；若以 root 运行，脚本会尝试恢复原属主/属组。如果首页出现 `Failed to open stream: Permission denied`，执行 `chown www:www config/config.php && chmod 644 config/config.php`（用户按实际 PHP-FPM 用户替换）。
 
 ---
 
@@ -514,7 +516,21 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.16**
+当前版本：**2.7.17**
+
+### v2.7.17
+
+**修复**
+
+- **`config_sync --write` 把 config.php 改成 0600，导致首页 500**：以 root 运行时，重写后的 `config.php` 属主变成 root、权限 0600，PHP-FPM（www）无法读取，首页直接报 `Failed to open stream: Permission denied`。现在写入后固定 `0644`（`config/` 已被 nginx 封锁，不会公网下载），并尽量恢复原属主/属组；备份文件保持 `0600`，避免密码副本被其他用户读取。
+- 如果已经踩坑，执行 `chown www:www config/config.php && chmod 644 config/config.php`（按实际 PHP-FPM 用户替换）即可恢复。
+
+**升级说明**
+
+- 替换 `bin/config_sync.php` 与 README 即可，无数据库结构变更。
+- 后续运行 `php bin/config_sync.php --write --yes` 不会再改坏权限；建议仍用与 PHP-FPM 相同的用户执行，或执行后确认 `ls -l config/config.php` 为 `-rw-r--r--`。
+
+<details><summary>v2.7.16（历史变更）</summary>
 
 ### v2.7.16
 
@@ -531,8 +547,6 @@ rm -rf storage/cache/templates/*
 - 无数据库结构变更，替换 `bin/config_sync.php` 与 README 即可。
 - 老站点无需运行该脚本；直接升级后，新增配置项会自动使用 `config.sample.php` 的默认值。
 - 需要把新键落到 `config.php` 时再运行；`--write` 会重新生成文件（注释不保留，值不变），并备份为 `config.php.bak.YmdHis`。
-
-<details><summary>v2.7.15（历史变更）</summary>
 
 ### v2.7.15
 

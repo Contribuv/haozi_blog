@@ -65,12 +65,16 @@ if (!$yes) {
     exit(1);
 }
 
+$oldOwner = @fileowner($configFile);
+$oldGroup = @filegroup($configFile);
+
 $merged = merge($sample, $config);
 $backup = $configFile . '.bak.' . date('YmdHis');
 if (!@copy($configFile, $backup)) {
     fwrite(STDERR, "备份失败：{$backup}\n");
     exit(1);
 }
+@chmod($backup, 0600); // 备份含密码，只给当前用户读
 
 $code = "<?php\n"
     . "/**\n"
@@ -86,8 +90,21 @@ if (@file_put_contents($tmp, $code, LOCK_EX) === false || !@rename($tmp, $config
     fwrite(STDERR, "写入失败，原 config.php 未改动。\n");
     exit(1);
 }
-@chmod($configFile, 0600);
-echo "\n已合并写入 config.php；原文件备份：{$backup}\n";
+
+// config/ 已被 nginx 封锁，0644 不会公网下载；但必须保证 PHP-FPM 用户可读。
+// 若以 root 运行，新文件属主会变成 root，因此尽量恢复原属主/属组，权限固定 0644。
+@chmod($configFile, 0644);
+if (function_exists('posix_geteuid') && posix_geteuid() === 0) {
+    if ($oldOwner !== false) {
+        @chown($configFile, $oldOwner);
+    }
+    if ($oldGroup !== false) {
+        @chgrp($configFile, $oldGroup);
+    }
+    echo "提示：当前以 root 运行；已尝试恢复原属主/属组并设为 0644。若首页 500，执行：\n";
+    echo "  chown www:www config/config.php && chmod 644 config/config.php\n";
+}
+echo "\n已合并写入 config.php（权限 0644，PHP-FPM 可读）；原文件备份：{$backup}\n";
 exit(0);
 
 /**
