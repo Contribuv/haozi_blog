@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.15-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.16-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -97,7 +97,7 @@ PHP_blog/                    ← 网站运行目录（root / DocumentRoot）直�
 ├── config/                  配置
 │   ├── config.sample.php    配置模板（config.php 由安装向导生成，不入库）
 │   └── nginx.conf.example   伪静态配置样例（可整段复制到宝塔「伪静态」）
-├── bin/                     CLI 脚本（migrate / project_sync / wm_refresh / schema / dbcheck / sqlitecheck / build_50x / check_*，均带 `_guard.php` 防 Web 触发）
+├── bin/                     CLI 脚本（migrate / project_sync / wm_refresh / schema / dbcheck / sqlitecheck / build_50x / config_sync / check_*，均带 `_guard.php` 防 Web 触发）
 ├── data/                    运行期数据（项目同步状态、升级缓存）
 ├── fonts/                   内置中文字体（文泉驿微米黑，Apache-2.0）
 ├── storage/                 缓存（模板编译产物）、会话、日志
@@ -412,6 +412,7 @@ php -S 0.0.0.0:8000 -t . bin/router.php
 | `php bin/dbcheck.php` | 检查数据库连接与表结构 |
 | `php bin/sqlitecheck.php` | 检查 SQLite 备份文件 |
 | `php bin/build_50x.php` | 重新生成静态错误页 `static/{404,403,50x}.html`（改主题样式后必须执行） |
+| `php bin/config_sync.php` | 对比 `config.sample.php`，列出 / 补全 `config.php` 缺失的配置项 |
 | `php bin/check_routes.php` | 校验路由表与 `Url::ROUTES` 一致性 |
 | `php bin/check_errorpage.php` | 校验错误页链路（主题模板 / 降级 HTML / 静态兜底） |
 | `php bin/check_hidden.php` | 校验文章 `hidden` 状态的列表 / 邻篇 / 统计口径 |
@@ -429,6 +430,21 @@ php -S 0.0.0.0:8000 -t . bin/router.php
 - 或在服务器上 `git pull` 后重载 PHP / 清理模板缓存（`storage/cache/templates/`）。
 
 升级只替换程序文件，`config/` 与 `storage/` 不会被覆盖。
+
+### config.php 与自定义配置
+
+`config.php` 含数据库凭据，且允许大量自定义，所以升级永远不会覆盖它。新版本新增的配置项**不需要手动补**：`bootstrap.php` 会以 `config.sample.php` 为默认值做深合并，`config.php` 里没写的键自动使用默认值，已写的值优先级最高。
+
+如果想把缺失项补进 `config.php`（方便查看/编辑），用检查工具：
+
+```bash
+php bin/config_sync.php                  # 只读：列出缺失键与类型冲突
+php bin/config_sync.php --write --yes    # 备份后合并缺失项
+```
+
+脚本只补缺失键，已有值（包括数据库密码和自定义值）一律不覆盖；写入前备份为 `config.php.bak.YmdHis`，输出只打印键名，不打印配置值。
+
+> `--write` 会重新生成 `config.php`，原有注释不会保留（值不变）。介意注释的话只跑只读检查，按输出手动补。
 
 ---
 
@@ -498,7 +514,25 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.15**
+当前版本：**2.7.16**
+
+### v2.7.16
+
+**新增**
+
+- **`bin/config_sync.php` 配置对比工具**：升级不会覆盖 `config.php`（含数据库凭据与自定义项），新版本新增的配置项由 `bootstrap.php` 以 `config.sample.php` 为默认值深合并，不补也能运行。若想把缺失项补进 `config.php`：
+  - `php bin/config_sync.php` 只读检查，列出缺失键与类型冲突；
+  - `php bin/config_sync.php --write --yes` 备份后合并，已有值（数据库密码、自定义值）一律优先，不覆盖；
+  - 输出只打印键名，不打印配置值；写入失败时原文件不动。
+- README 增加「config.php 与自定义配置」说明，并在 CLI 脚本表登记。
+
+**升级说明**
+
+- 无数据库结构变更，替换 `bin/config_sync.php` 与 README 即可。
+- 老站点无需运行该脚本；直接升级后，新增配置项会自动使用 `config.sample.php` 的默认值。
+- 需要把新键落到 `config.php` 时再运行；`--write` 会重新生成文件（注释不保留，值不变），并备份为 `config.php.bak.YmdHis`。
+
+<details><summary>v2.7.15（历史变更）</summary>
 
 ### v2.7.15
 
@@ -512,8 +546,6 @@ rm -rf storage/cache/templates/*
 - 无数据库结构变更，替换 `core/bootstrap.php`；`config/config.sample.php` 的注释同步更新。
 - 验证：`curl -I https://站点/` 应看到 `Set-Cookie: ...; Secure; HttpOnly; SameSite=Lax`。
 - 本地 `http://127.0.0.1:8000` 调试不受影响，Cookie 仍不带 Secure。
-
-<details><summary>v2.7.14（历史变更）</summary>
 
 ### v2.7.14
 
