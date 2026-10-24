@@ -12,6 +12,7 @@ use Blog\Request;
 use Blog\Response;
 use Blog\Service\Context;
 use Blog\Service\Flash;
+use Blog\Service\SiteUrl;
 
 /**
  * 前台静态页面控制器（对照原项目 about / links_page / links_apply）。
@@ -48,15 +49,15 @@ class PageController extends BaseController
         // 本站头像完整地址：相对路径补全站点根；未设置时回退 favicon
         $avatar = trim((string) Settings::get('avatar', ''));
         if ($avatar !== '' && !str_starts_with($avatar, 'http')) {
-            $avatar = Request::baseUrl() . $avatar;
+            $avatar = SiteUrl::base() . $avatar;
         }
         if ($avatar === '') {
-            $avatar = Request::baseUrl() . '/favicon.ico';
+            $avatar = SiteUrl::base() . '/favicon.ico';
         }
         $this->render('links.html', [
             'links' => \Blog\Model\Link::load('approved'),
             // 站点根地址（scheme://host）：供友链页「本站信息」卡片展示，方便对方复制回挂
-            'site_url' => Request::baseUrl(),
+            'site_url' => SiteUrl::base(),
             // 头像完整 URL：供「点击复制」按钮一键回填
             'avatar_url' => $avatar,
         ]);

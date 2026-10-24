@@ -4,7 +4,7 @@
 
 原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
 
-![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.13-blue) ![license](https://img.shields.io/badge/license-MIT-green)
+![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.14-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
 
@@ -44,6 +44,7 @@
 - 📤 **媒体上传** — 图片 / 媒体 / 文件
 - 🧹 **孤儿文件清理** — 缩略图预览、搜索、排序、批量删除
 - 🛠️ **站点设置** — 站点信息、导航开关、评论开关、统计代码注入、图片水印、SMTP 测试
+- 🌐 **站点地址与 HTTPS** — 统一 RSS / 分享 / 邮件里的绝对链接；可选强制 HTTPS 与同主域 www 归一（不跨域名跳转，本地调试自动豁免）
 - 🎭 **主题切换** — 多套主题目录，开箱内置 `tech`
 - 💾 **数据备份与迁移** — 数据库备份、SQL / SQLite 文件导入、JSON / Markdown 导出
 - ⬆️ **在线升级** — 检测并一键升级，GitHub Releases 主源 + Gitee 镜像回退
@@ -56,6 +57,7 @@
 - 📧 **邮箱找回密码** — 6 位验证码，10 分钟有效、60 秒限频
 - 🚫 **CSRF 防护** — 全部 POST 请求在根 `index.php` 统一校验 Origin / Referer 同源，跨站提交一律返回 403（`themes/<主题>/403.html`）；配合 Session Cookie 的 `SameSite=Lax` 形成两层防护，后台表单无需手工插入 token
 - 🌐 **反代 XFF 伪造防护** — 仅当 `REMOTE_ADDR` 本身是回环 / 私网地址时才采信 `X-Forwarded-For`，且逐段校验格式
+- 🔗 **站点地址规范化** — `site_url` 统一绝对链接；只做同站点的 `http→https` 与同主域 www 归一，后台 / 安装向导 / API / ACME / 本地调试豁免，不做跨域名强制跳转
 - 🧱 **其他** — 安全响应头、CSP、Session Cookie 加固、Markdown 链接协议过滤（含 GitHub README）
 
 ---
@@ -397,6 +399,8 @@ php -S 0.0.0.0:8000 -t . bin/router.php
 
 访问 http://127.0.0.1:8000 ，后台 http://127.0.0.1:8000/admin/login 。
 
+> 本地调试无需配置「站点地址」：`127.0.0.1`、`localhost`、私网 IP、`*.test` / `*.local` 会自动跟随当前请求，后台填了线上地址也不会把本地 301 到线上。需要强制用某个地址测试时，在 `config/config.php` 的 `app.site_url` 里显式填写（优先级高于后台设置）。
+
 常用 CLI 脚本：
 
 | 脚本 | 作用 |
@@ -494,7 +498,29 @@ rm -rf storage/cache/templates/*
 
 ## 📋 版本
 
-当前版本：**2.7.13**
+当前版本：**2.7.14**
+
+### v2.7.14
+
+**新增**
+
+- **站点地址与访问规范化**：后台「博客设置 → 站点信息」新增三项：
+  - **站点地址**（如 `https://www.example.com`）：RSS、分享卡片、邮件通知、友链名片、水印域名等绝对链接统一以它为准，不再跟着当前访问的 host 变；留空则跟随当前请求。
+  - **强制 HTTPS**：站点地址填 `https://` 时，http 访问 301 到 https。
+  - **统一 www**：同一主域内把带 / 不带 www 的访问 301 到站点地址的写法。
+  - 只做「同站点」的协议升级与 www 归一，**不跨域名跳转**；后台、安装向导、`/api/`、`/.well-known/`、静态目录与本地调试自动豁免。
+- **本地调试零影响**：`127.0.0.1`、`localhost`、私网 IP、`*.test` / `*.local` 访问时自动跟随当前请求，不会因为后台填了线上地址而被 301 到线上；`config.php` 的 `app.site_url` 可显式覆盖（优先级最高）。
+- **反代 HTTPS 判断增强**：`Request::isSecure()` 支持 `X-Forwarded-Proto` / `X-Forwarded-Port`，仅当 `REMOTE_ADDR` 命中 `trusted_proxies` 时采信。
+- **顺手修复**：`Url::ROUTES` 补齐 `links_apply_success` 与 `readme_img`，`bin/check_routes.php` 恢复全项通过。
+
+**升级说明**
+
+- 无数据库结构变更；老站点不填「站点地址」时行为与之前完全一致。
+- 部署后到后台「博客设置 → 站点信息」填写站点地址；已全站 HTTPS 的站点勾选「强制 HTTPS」即可让 http 访问 301。
+- 本地调试无需任何配置；反代部署请在 `config.php` 的 `trusted_proxies` 填上代理 IP，否则 `X-Forwarded-Proto` 不被采信，可能误判为 http。
+- 无 Nginx 配置变更，无需重跑 `build_50x.php`。
+
+<details><summary>v2.7.13（历史变更）</summary>
 
 ### v2.7.13
 
@@ -512,8 +538,6 @@ rm -rf storage/cache/templates/*
 - 替换 `bin/` 全部脚本（含新增的 `_guard.php`）与 `core/Request.php` 即可，无数据库结构变更，无需重跑 `build_50x.php`。
 - 验证：`curl -I https://站点/bin/dbcheck.php` 应返回 404；`php bin/check_ip.php` 应输出「全部通过」。
 - **部署后建议排查访问日志**：`grep -E '/bin/(dbcheck|schema|wm_refresh|project_sync|migrate|upgrade_worker)' /www/wwwlogs/站点.log`，确认暴露期间是否被外部请求过。
-
-<details><summary>v2.7.12（历史变更）</summary>
 
 ### v2.7.12
 

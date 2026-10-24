@@ -17,10 +17,7 @@ class RequestCtx
         $this->path = Request::uri();
         $this->method = Request::method();
         $this->args = $_GET;
-        $https = strtolower($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off';
-        $scheme = $https ? 'https' : 'http';
-        $host = $_SERVER['HTTP_HOST'] ?? ('127.0.0.1' . (($https ? 443 : 80) === (int)($_SERVER['SERVER_PORT'] ?? 80) ? '' : ':' . $_SERVER['SERVER_PORT']));
-        $root = $scheme . '://' . $host;
+        $root = \Blog\Service\SiteUrl::base();
         $this->url_root = $root . '/';
         $this->url = $root . ($_SERVER['REQUEST_URI'] ?? '/');
     }

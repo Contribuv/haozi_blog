@@ -15,6 +15,7 @@ use Blog\Service\Context;
 use Blog\Service\Flash;
 use Blog\Service\Mail;
 use Blog\Service\Otp;
+use Blog\Service\SiteUrl;
 use Blog\Service\Upload;
 use Blog\Service\Watermark;
 
@@ -48,6 +49,11 @@ class SettingsController extends BaseController
             'admin_username' => Auth::username() !== '' ? Auth::username() : 'admin',
             'admin_avatar' => (string) Settings::get('avatar', ''),
             'avatar_exists' => Avatar::configuredAvatarExists(),
+            // 站点地址与访问规范化（留空 = 跟随当前请求）
+            'site_url' => (string) Settings::get(SiteUrl::SETTING_URL, ''),
+            'current_url' => Request::baseUrl(),
+            'force_https' => SiteUrl::forceHttps() ? '1' : '0',
+            'unify_www' => SiteUrl::unifyWww() ? '1' : '0',
             'smtp_host' => (string) Settings::get('smtp_host', ''),
             'smtp_port' => (string) Settings::get('smtp_port', '465'),
             'smtp_user' => (string) Settings::get('smtp_user', ''),
@@ -94,6 +100,17 @@ class SettingsController extends BaseController
             }
             Settings::set($key, $val);
         }
+
+        // ── 站点地址与访问规范化（留空 = 跟随当前请求；非法值保留原值） ──
+        $siteUrlInvalid = false;
+        $normalizedSiteUrl = SiteUrl::normalize((string) Request::post('site_url', ''));
+        if ($normalizedSiteUrl === null) {
+            $siteUrlInvalid = true;
+        } else {
+            Settings::set(SiteUrl::SETTING_URL, $normalizedSiteUrl);
+        }
+        Settings::set(SiteUrl::SETTING_FORCE_HTTPS, !empty($_POST['force_https']) ? '1' : '0');
+        Settings::set(SiteUrl::SETTING_UNIFY_WWW, !empty($_POST['unify_www']) ? '1' : '0');
 
         // ── 图片水印（开关为复选框，未勾选即关闭） ──
         // 先记录旧配置，用于判断「开关/文本/位置/字号」是否变化（变化才触发历史图后台刷新）
@@ -262,7 +279,11 @@ class SettingsController extends BaseController
 
         // 钩子位 setting.save：插件可在设置保存后同步自身配置
         \Blog\Hook::emit('setting.save', ['keys' => array_keys($_POST)]);
-        Flash::success('设置已保存');
+        if ($siteUrlInvalid) {
+            Flash::error('站点地址格式不正确，已保留原值；请填写 https://example.com 这样的站点根地址（不支持子目录、参数）。');
+        } else {
+            Flash::success('设置已保存');
+        }
         Response::redirect('/admin/settings');
     }
 

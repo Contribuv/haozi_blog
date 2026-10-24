@@ -281,7 +281,7 @@ class Comments
             $title = $isProject ? (string) ($project['name'] ?? '') : (string) ($post['title'] ?? '');
             $label = $isProject ? '项目' : '文章';
             $detailPath = ($isProject ? '/projects/' : '/post/') . $targetId . '#comments';
-            $baseUrl = Request::baseUrl();
+            $baseUrl = SiteUrl::base();
             Notify::defer(static function () use ($isProject, $targetId, $title, $label, $detailPath, $baseUrl, $author, $content, $pid, $email, $status): void {
                 Notify::commentCreated(
                     $isProject ? null : $targetId,

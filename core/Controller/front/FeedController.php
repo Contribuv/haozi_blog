@@ -6,6 +6,7 @@ namespace Blog\Controller\front;
 use Blog\Controller\BaseController;
 use Blog\Model\Post;
 use Blog\Model\Settings;
+use Blog\Service\SiteUrl;
 
 /**
  * RSS 订阅（对照原项目 rss_feed）。
@@ -46,10 +47,7 @@ class FeedController extends BaseController
     /** 站点根地址（结尾带 /） */
     private function urlRoot(): string
     {
-        $https = !empty($_SERVER['HTTPS']) && strtolower((string) $_SERVER['HTTPS']) !== 'off';
-        $scheme = $https ? 'https' : 'http';
-        $host = (string) ($_SERVER['HTTP_HOST'] ?? '127.0.0.1');
-        return $scheme . '://' . $host . '/';
+        return SiteUrl::base() . '/';
     }
 
     /** 中国时区字符串 → RFC822 */

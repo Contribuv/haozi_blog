@@ -12,6 +12,7 @@ use Blog\Service\Auth;
 use Blog\Service\Avatar;
 use Blog\Service\Flash;
 use Blog\Service\Notify;
+use Blog\Service\SiteUrl;
 
 /**
  * 后台评论管理。
@@ -58,7 +59,7 @@ class CommentController extends BaseController
         // 审核通过后补发被回复者通知（若适用），延后到响应结束后发送不阻塞
         if (Notify::on()) {
             $cid = (int) $commentId;
-            $baseUrl = Request::baseUrl();
+            $baseUrl = SiteUrl::base();
             Notify::defer(static function () use ($cid, $baseUrl): void {
                 Notify::replyRecipient($cid, $baseUrl);
             });
@@ -95,7 +96,7 @@ class CommentController extends BaseController
             // 批量通过后逐条补发被回复者通知（延后执行）
             if (Notify::on()) {
                 $cidList = array_map('intval', $ids);
-                $baseUrl = Request::baseUrl();
+                $baseUrl = SiteUrl::base();
                 Notify::defer(static function () use ($cidList, $baseUrl): void {
                     foreach ($cidList as $cid) {
                         Notify::replyRecipient($cid, $baseUrl);

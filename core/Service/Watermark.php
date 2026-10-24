@@ -77,7 +77,10 @@ class Watermark
         }
         $name = trim((string) Settings::get('blog_name', ''));
         // CLI（backfill 等）无 HTTP_HOST 时不含域名，避免写入 127.0.0.1
-        $host = isset($_SERVER['HTTP_HOST']) ? \Blog\Request::host() : '';
+        $host = isset($_SERVER['HTTP_HOST']) ? SiteUrl::host() : '';
+        if (in_array($host, ['127.0.0.1', 'localhost', '::1'], true)) {
+            $host = '';
+        }
         $parts = [];
         if ($name !== '') {
             $parts[] = $name;

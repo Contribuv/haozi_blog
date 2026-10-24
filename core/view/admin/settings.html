@@ -130,6 +130,32 @@
         <div class="card">
             <div class="card-header"><h3>站点信息</h3></div>
             <div class="form-group">
+                <label>站点地址</label>
+                <input type="text" name="site_url" class="input-text"
+                       value="{{ site_url }}" placeholder="https://www.example.com">
+                <span class="form-hint">用于生成 RSS、分享卡片、邮件里的绝对链接。留空则跟随当前访问地址；本地 127.0.0.1 / localhost 调试会自动跟随，不受此项影响。当前访问：{{ current_url|default('') }}</span>
+            </div>
+            <div class="form-group">
+                <label>强制 HTTPS</label>
+                <label class="switch-label">
+                    <span class="switch">
+                        <input type="checkbox" name="force_https" value="1"{{ ' checked' if force_https|default('0') in ('1','on','true','yes') else '' }}>
+                        <span class="slider"></span>
+                    </span>
+                    <span class="switch-text">站点地址填写 https:// 时，http 访问会 301 跳到 https。后台、安装向导、.well-known 与本地调试自动豁免。</span>
+                </label>
+            </div>
+            <div class="form-group">
+                <label>统一 www</label>
+                <label class="switch-label">
+                    <span class="switch">
+                        <input type="checkbox" name="unify_www" value="1"{{ ' checked' if unify_www|default('0') in ('1','on','true','yes') else '' }}>
+                        <span class="slider"></span>
+                    </span>
+                    <span class="switch-text">仅在同一主域内，把带 / 不带 www 的访问 301 到「站点地址」的写法；不会跨域名跳转，避免填错后无法访问。</span>
+                </label>
+            </div>
+            <div class="form-group">
                 <label>博客名称</label>
                 <input type="text" name="blog_name" class="input-text"
                        value="{{ blog_name }}" placeholder="你的博客名称">

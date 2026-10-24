@@ -29,6 +29,10 @@ return [
         'debug' => false,              // 调试开关，生产环境务必保持 false
         'timezone' => 'Asia/Shanghai', // 时区，用于 date() 等时间函数
         'base_path' => '',             // 站点部署在子目录时的前缀，如 '/blog'；根目录留空
+        // 站点正式地址（如 https://www.example.com）。留空则跟随当前访问地址，
+        // 后台「博客设置 → 站点地址」也可设置；此处显式填写优先级更高，
+        // 本地调试想测试 301 时可在 config.php 里临时覆盖。
+        'site_url' => '',
     ],
     // ── 可信反向代理 ──
     'trusted_proxies' => [

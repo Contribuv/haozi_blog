@@ -12,6 +12,7 @@ require_once __DIR__ . '/core/bootstrap.php';
 use Blog\App;
 use Blog\Service\ErrorPage;
 use Blog\Service\Install;
+use Blog\Service\SiteUrl;
 
 // 未安装：直接渲染安装向导（不重定向，避免与入口重写规则形成死循环）
 if (!Install::isInstalled()) {
@@ -21,6 +22,9 @@ if (!Install::isInstalled()) {
 
 // 未捕获异常一律渲染主题化的 500 页，避免 nginx 默认错误页
 set_exception_handler([ErrorPage::class, 'handle']);
+
+// 站点地址规范化：http → https、同主域 www 归一（本地调试 / 后台 / 安装向导自动豁免）
+SiteUrl::enforce();
 
 $app = new App();
 $routes = require CORE_PATH . '/routes.php';
