@@ -2,8 +2,6 @@
 
 > **infowe.site 博客系统的 PHP 实现：单管理员 · 轻量 · 开箱即用 · 自带图形化安装向导 · 无需 Python 环境**
 
-原 Flask 版（SQLite）已停止更新，本仓库为 1:1 重构版本：前端交互与后台功能保持一致，存储层改为 MySQL。
-
 ![PHP](https://img.shields.io/badge/PHP-8.0%2B-777BB4) ![MySQL](https://img.shields.io/badge/MySQL-5.7%20%7C%208.0-4479A1) ![version](https://img.shields.io/badge/version-2.7.17-blue) ![license](https://img.shields.io/badge/license-MIT-green)
 
 ---
